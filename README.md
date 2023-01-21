@@ -1,36 +1,47 @@
- <p align="center">
+<div align="center">
   <img width="250px" src="https://github.com/NekoSilverFox/NekoSilverfox/blob/master/icons/logo_building_spbstu.png?raw=true" align="center" alt="ogo_building_spbstu" />
   </br>
+  <b><font size=3>Санкт-Петербургский государственный политехнический университет</font></b>
   </br>
-  <b><font size=4>Санкт-Петербургский государственный политехнический университет</font></b></br>
-  <b>Институт компьютерных наук и технологий</b>
- </p>
- <p align="center">
+  <b><font size=2>Институт компьютерных наук и технологий</font></b>
+  </br>
+  <b><font size=2>Высшая школа программной инженерии</font></b>
+</div>
 
 
-[![License](https://img.shields.io/badge/license-Apache%202.0-brightgreen)](LICENSE)
+</br>
+</br>
+</br>
+</br>
+
+<div align="center">
+<p align="center"><b><font size=12>编码单元分类器</font></b></br></p>
+</div>
+</br>
+</br>
+</br>
+</br>
+</br>
+</br>
 
 
-</p>
+| Выполнил студенты гр. 3530904/90102 | Мэн Ц.            |
+| :---------------------------------- | ----------------- |
+| Руководитель                        | Черноруцкий И. Г. |
+
+</br>
+</br>
+
+<div align="center">
+  <p align="center">Санкт-Петербург</p>
+  <p align="center">2023</p>
+</div>
 
 <div align=left>
-<p align="center"><b><font size=12>编码单元分类器</font></b></br></p>
-
-
-
 > 作者：孟嘉宁，圣彼得堡彼得大帝理工大学，计算机科学与技术学院
 >
 > Мэн Цзянин, Санкт-Петербургский политехнический университет Петра Великого, Институт компьютерных наук и технологий
 >
->
-> 关键词：
->
-> - 机器学习
-> - 分类算法
-> - 分类预测
-> - 监督学习
-> - 算法
-> - 编码树单元
 
 
 
