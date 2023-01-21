@@ -49,7 +49,7 @@
 
 > 关键词：机器学习，分类算法，分类器，分类预测，监督学习，算法，编码单元
 
-本文提出了一种新的算法 (CUCL - Coding unit classification algorithm), 用于解决机器学习中的分类预测问题。CUCL 的灵感来自于**高效率视讯编码[^1-1]**（**High Efficiency Video Coding**，简称 **HEVC**，又称为**[H.265](https://iphome.hhi.de/wiegand/assets/pdfs/2012_12_IEEE-HEVC-Overview.pdf)**）中的[编码树单元](https://zh.wikipedia.org/wiki/編碼樹單元)(Coding Tree Unit, CTU)。
+本文提出了一种新的算法 (CUCL - Coding unit classification algorithm), 用于解决机器学习中的分类预测问题。CUCL 的灵感来自于**高效率视讯编码[^1-1]**（High Efficiency Video Coding，简称 HEVC，又称为H.265）中的[编码树单元](https://zh.wikipedia.org/wiki/編碼樹單元)(Coding Tree Unit, CTU)。
 
 编码树单元是HEVC的基本编码单元。HEVC支援8x8到64×64像素的CTU大小。编码树单元取代了过往中使用的 16×16 像素[宏区块](https://zh.wikipedia.org/wiki/宏區塊)，编码树单元可使用 64×64 的大区块结构，且可以更好地将图片细分为可变大小尺寸。于初始时将图片划分为编码树单元，可以为64×64、32×32或16×16，而像素块尺寸提升通常会提高时编码的效率。
 
@@ -93,7 +93,7 @@
 
 在介绍本文中提出的算法之前，我们将介绍以前为解决计机器学习分类预测方面所做的一些工作。
 
-- 1967年，T.M.COVER和P.E.HART提出了kNN算法(kNN，k-NearestNeighbor)[^1-2]。其中k指的是某个样本的k个最近的邻居，也就是说每个样本都可以用它最接近的k个邻居来代表或预测。 kNN算法的核心思想是如果一个样本在特征空间中的k个最相邻的样本中的大多数属于某一个类别，则该样本也属于这个类别，并具有这个类别上样本的特性。该方法在确定分类决策上只依据最邻近的一个或者几个样本的类别来决定待分样本所属的类别。
+- 1967年，T.M.COVER和P.E.HART提出了kNN算法(k-NearestNeighbor, kNN)[^1-2]。其中k指的是某个样本的k个最近的邻居，也就是说每个样本都可以用它最接近的k个邻居来代表或预测。 kNN算法的核心思想是如果一个样本在特征空间中的k个最相邻的样本中的大多数属于某一个类别，则该样本也属于这个类别，并具有这个类别上样本的特性。该方法在确定分类决策上只依据最邻近的一个或者几个样本的类别来决定待分样本所属的类别。
 
     > https://bbs.huaweicloud.com/blogs/251434
     
