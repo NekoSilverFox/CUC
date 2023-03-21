@@ -166,8 +166,8 @@
 | ------------- | ---------------------------------- |
 | $x$           | 数据集中的当前元素                 |
 | $x^{\prime}$  | 数据预处理后的当前元素             |
-| $x_{min}$     | 数据集中最小的元素                 |
-| $x_{max}$     | 数据集中最大的元素                 |
+| $x_{min}$     | 数据集中最小的值                   |
+| $x_{max}$     | 数据集中最大的值                   |
 | $I_{min}$     | 数据预处理阶段，数据映射到的最小值 |
 | $I_{max}$     | 数据预处理阶段，数据映射到的最大值 |
 | $N$           | 数据集的维度                       |
@@ -185,7 +185,7 @@
 
 ### 归一化
 
-在归一化中我们将特征抽取之后的数据进行变换，把数据映射到固定区间$[I_{min}, I_{max}]$之内。归一化的在数学上表述如下：
+在归一化中,我们将特征抽取之后的数据进行变换，把数据映射到固定区间$[I_{min}, I_{max}]$之内。归一化的在数学上表述如下：
 $$
 x^{\prime}={\frac{x-x_{min}}{x_{max}-x_{min}}} \cdot {(I_{max}-I_{min})}+I_{min}
 $$
@@ -224,8 +224,8 @@ $$
 其中，
 
 - $x$ - 为数据集中的当前元素
-- $\mu$ - 为数据集中所有元素的平均值
-- $\sigma$ - 为数据集的标准差
+- $\mu$ - 为数据集中所有特征值的平均值
+- $\sigma$ - 为数据集特征值的标准差
 
 ## 构建编码单元
 
@@ -237,11 +237,11 @@ $$
 
 ### 分割
 
-#### 预分割
-
-在这一小节中我们将具体介绍编码单元的分割方法。下图中展示了一个被不断分割的二维编码单元，可以看到，在不断分割的过程中，单个编码单元的“容积”和其中包含的粒子数量会逐渐减少，其效果类似于一个不断分形的正方形。
+在这一小节中我们将具体介绍编码单元的分割方法。下图中展示了一个被不断分割的二维编码单元，可以看到，在不断分割的过程中，单个编码单元的“容积”和其中包含的粒子数量会逐渐减少，其效果类似于一个不断递归的正方形。
 
 ![编码单元分割示例](doc/pic/编码单元分割示例.png)
+
+#### 预分割
 
 本阶段的编码单元的预分割原则是：如果当前的编码单元中包含不止唯一一种目标值的粒子，那么此编码单元就应该被继续分割为更小的单元，直到每个编码单元中都包含有唯一一种目标值的粒子群。
 
@@ -253,9 +253,9 @@ $$
 
 #### 细化分割
 
-细化分割是在预分割基础上所进行的，其目的是为了提高后期预测的准确率，避免在后期“感染”阶段过大的编码单元造成的欠拟合（underfitting）。细化分割的次数 $C_{re}$ 是作为编码单元分类器 CUC 的超参数出现的，具体次数应该由用户指定。细化分割的方法是对已经预分割结束的所有单元再进行 $C_{re}$ 次分割。
+细化分割是在预分割基础上所进行的，其目的是为了提高后期预测的准确率，避免在后期“感染”过大的编码单元造成的欠拟合（underfitting）。细化分割的次数 $C_{re}$ 是作为编码单元分类器 CUC 的超参数出现的，具体次数应该由用户指定。细化分割的方法是对已经预分割结束的所有单元再进行 $C_{re}$ 次分割。
 
-下图中展示了一个当预分割次数 $C_{re}=1$ 和 $C_{re}=2$ 时的效果。
+下图中展示了一个当细化分割次数 $C_{re}=1$ 和 $C_{re}=2$ 时的效果。
 
 ![细化分割](doc/pic/细化分割.png)
 
@@ -315,7 +315,7 @@ $$
 $$
 由公式可知，如果某个编码单元的传染力度 $ρ=0$，则说明在该编码单元中没有任何的粒子（空白的编码单元），如上面图片中编号为 1、6、8、13 等单元。感染的目的就是将这些空白的编码单元标记为目标值的某一种。
 
-在得到所有编码单元的传染力度 $ρ$ 后，感染阶段开始。
+在计算得到所有编码单元的传染力度 $ρ$ 后，感染阶段开始。
 
 1. 拥有最大感染力度的编码单元应当去感染其临近的空白的编码单元
 
@@ -329,7 +329,7 @@ $$
 
 #### 示例
 
-我们在分割阶段得到的结果的基础上进行，感染阶段的说明。
+我们在分割阶段得到的结果的基础上进行，感染阶段的示例如下。
 
 1. 通过计算可知，在 $ρ\neq0$ 的编码单元中，26 号的感染力度最大。所以应当去感染临近的 25 号编码单元
 
@@ -384,7 +384,7 @@ $$
 
 # 引用来源
 
-[^1-1]:[Overview of the High Efficiency Video Coding (HEVC) Standard](https://iphome.hhi.de/wiegand/assets/pdfs/2012_12_IEEE-HEVC-Overview.pdf)
+[^1-1]:[Gary J. Sullivan, Woo-Jin Han, Thomas Wiegand, 2012. Overview of the High Efficiency Video Coding (HEVC) Standard , IEEE Transactions on circuits and systems for video technology, VOL.22, NO.12](https://iphome.hhi.de/wiegand/assets/pdfs/2012_12_IEEE-HEVC-Overview.pdf)
 [^1-2]: [Machine Learning, wikipedia](https://zh.wikipedia.org/wiki/%E6%9C%BA%E5%99%A8%E5%AD%A6%E4%B9%A0)
 [^1-3]:[T.Co ver and P. Hart (1967). "Nearest neighbor pattern classification" in IEEE Transactions on Information Theory, vol.13, no.1, pp.21-27, doi: 10.1109/TIT.1967.1053964.](https://ieeexplore.ieee.org/abstract/document/1053964)
 [^1-4]:[Harry Zhang (2004). The Optimality of Naive Bayes](http://www.cs.unb.ca/~hzhang/publications/FLAIRS04ZhangH.pdf)
@@ -413,8 +413,10 @@ $$
 [^2-21]:Li Hang．Statistical Learning Methods. Beijing: Tsinghua University Press, 2012: Chapter 7, pp. 95-135
 [^2-22]:[Cox, D.R. (1958) The Regression Analysis of Binary Sequences. Journal of the Royal Statistical Society: Series B, 20, 215-242.](https://www.jstor.org/stable/2983890)
 [^2-23]:[Stephanie Kay Ashenden (2021). The Era of Artificial Intelligence, Machine Learning, and Data Science in the Pharmaceutical Industry.](https://www.sciencedirect.com/book/9780128200452/the-era-of-artificial-intelligence-machine-learning-and-data-science-in-the-pharmaceutical-industry#book-info)
+
 [^gr-1]:[Virus transmission and epidemiology (2023). Viruses (Second Edition), Understanding to Investigation, Pages 59-71](https://www.sciencedirect.com/science/book/9780323903851)
-[^gr-2]:The scaling of contact rates with population density for the infectious disease models (2013). [Mathematical Biosciences](https://www.sciencedirect.com/journal/mathematical-biosciences)[Volume 244, Issue 2](https://www.sciencedirect.com/journal/mathematical-biosciences/vol/244/issue/2), Pages 125-134
+
+[^gr-2]:Hao Hu, Karima Nigmatulina, Philip Eckhoff, 2013. The scaling of contact rates with population density for the infectious disease models. [Mathematical Biosciences](https://www.sciencedirect.com/journal/mathematical-biosciences)[Volume 244, Issue 2](https://www.sciencedirect.com/journal/mathematical-biosciences/vol/244/issue/2), Pages 125-134
 
 
 
