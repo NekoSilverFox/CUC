@@ -91,7 +91,8 @@ class CodingUnitClassifier(object):
                 s_type_count[col_target] += 1
 
         # -1 代表这个编码单元里没有任何粒子，为空白编码单元
-        if -2 == s_type_count.sum():
+        print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> s_type_count.sum(): {s_type_count.sum()}')
+        if 0 == s_type_count.sum():
             return -2
 
         s_type_count = s_type_count / s_type_count.sum()  # 转换为概率
