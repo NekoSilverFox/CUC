@@ -19,7 +19,7 @@ from sklearn.model_selection import train_test_split
 class CodingUnitClassifier(object):
     """编码单元分类器预估器（estimator）"""
 
-    def __init__(self, num_continuing_splits=0, threshold_value=1.0, is_draw_2D=False, **kw) -> None:
+    def __init__(self, num_continuing_splits=0, threshold_value=1.0, is_draw_2D=False, color_map=[], pic_save_path=None, **kw) -> None:
         """初始化
 
         Args:
@@ -27,8 +27,12 @@ class CodingUnitClassifier(object):
             threshold_value (int, optional): 临界值. Defaults to  1.0.
             is_draw_2D (bool, optional): 当绘制 2D 数据集，是否绘制中途图像. Defaults to False.
         """
-        self.split_count = 0  # 分割次数计数器
         self.is_draw_2D = is_draw_2D
+        self.pic_save_path = pic_save_path
+        self.color_map = color_map
+        self.draw_count = 0  # 绘制次数记录（还用于拓展保存时的文件名）
+
+        self.split_count = 0  # 分割次数计数器
         self.num_continuing_splits = num_continuing_splits
         self.threshold_value = threshold_value  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
 
@@ -53,7 +57,8 @@ class CodingUnitClassifier(object):
         检测当前 self 内数组的长度是否正常
         :return:
         """
-        if self.arrCU_start_points.shape[0] != self.arrCU_dL.shape[0] != self.arrCU_is_enable.shape[0] != self.arrCU_final_target.shape[0]:
+        if self.arrCU_start_points.shape[0] != self.arrCU_dL.shape[0] != self.arrCU_is_enable.shape[0] != \
+                self.arrCU_final_target.shape[0]:
             raise ValueError(f'arrCU 长度异常：\n'
                              f'\t{self.arrCU_start_points.shape[0]}'
                              f'\t{self.arrCU_dL.shape[0]}'
@@ -91,13 +96,13 @@ class CodingUnitClassifier(object):
                 s_type_count[col_target] += 1
 
         # -1 代表这个编码单元里没有任何粒子，为空白编码单元
-        print(f'>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> s_type_count.sum(): {s_type_count.sum()}')
         if 0 == s_type_count.sum():
             return -2
 
+        # 如果不是空 CU，则看看某种 target 的粒子占比是否达到阈值
         s_type_count = s_type_count / s_type_count.sum()  # 转换为概率
         if (s_type_count.max() >= self.threshold_value) and \
-           (1 == s_type_count[s_type_count.values == s_type_count.max()].shape[0]):  # 不允许出现两种相同概率
+                (1 == s_type_count[s_type_count.values == s_type_count.max()].shape[0]):  # 不允许出现两种相同概率
             return s_type_count[s_type_count.values == s_type_count.max()].index[0]
         else:
             return -1
@@ -136,41 +141,53 @@ class CodingUnitClassifier(object):
         self.arrCU_start_points = np.vstack([self.arrCU_start_points, np.array(combinations)])
         self.arrCU_dL = np.hstack([self.arrCU_dL, np.full(shape=(2 ** self.N_train,), fill_value=new_dL)])
         self.arrCU_is_enable = np.hstack([self.arrCU_is_enable, np.full(shape=(2 ** self.N_train,), fill_value=True)])
-        self.arrCU_final_target = np.hstack([self.arrCU_final_target, np.full(shape=(2 ** self.N_train,), fill_value=-1, dtype=np.int)])
+        self.arrCU_final_target = np.hstack(
+            [self.arrCU_final_target, np.full(shape=(2 ** self.N_train,), fill_value=-1, dtype=np.int)])
 
         self.split_count += 1
 
-    def draw_2d(self, color_map) -> None:
+    def draw_2d(self, color_map, pic_save_path=None) -> None:
+        """
+        绘制 2D 图形
+        :param color_map:
+        :param pic_save_path:
+        :return:
+        """
         color_map = np.array(color_map)
         if color_map.shape[0] != self.N_train:
             raise ValueError('\n[CUC-ERROR] color_map.shape[0] != self.N_train')
 
         plt.figure(figsize=(5, 5))
+
         # 绘制点
         tmp_data = pd.concat([pd.DataFrame(self.X_train), pd.Series(self.y_train)], axis=1)
         tmp_data.columns = ('x', 'y', 'target')
         for target in np.unique(self.y_train):
             plt.scatter(tmp_data[tmp_data['target'] == target].values[:, 0],
-                        tmp_data[tmp_data['target'] == target].values[:, 1])
+                        tmp_data[tmp_data['target'] == target].values[:, 1], c=color_map[target], s=5)
 
-        for start_points, dL, target, color in zip(self.arrCU_start_points, self.arrCU_dL, self.arrCU_final_target, color_map):
-            print(f'[INFO] Draw start_point: {start_points}, dL: {dL}, target: {target}')
-            if -1 == target:
-                continue
+        for i in range(self.arrCU_start_points.shape[0]):
+            target = self.arrCU_final_target[i]
+            if -1 == target: continue
+
+            start_points = self.arrCU_start_points[i]
+            dL = self.arrCU_dL[i]
             t_x_block = [start_points[0], start_points[0] + dL, start_points[0] + dL, start_points[0]]
             t_y_block = [start_points[1], start_points[1],      start_points[1] + dL, start_points[1] + dL]
-            plt.plot(t_x_block, t_y_block, c='black')
-            if -1 == target:
+
+            plt.plot(t_x_block, t_y_block, c='black')  # 黑色边框
+            if -2 == target:
                 plt.fill(t_x_block, t_y_block, c='grey', alpha=0.2)
             else:
-                plt.fill(t_x_block, t_y_block, c=color, alpha=0.2)
+                plt.fill(t_x_block, t_y_block, c=color_map[target], alpha=0.2)
             plt.title(f'Splitting process in CUC\n(splits count {self.split_count})')
             plt.ylabel('y')
             plt.xlabel('x')
             plt.axis('equal')  # x、y 单位长度等长
 
+        self.draw_count += 1
+        if pic_save_path is not None: plt.savefig(f'{pic_save_path}-{self.draw_count}.png')
         plt.show()
-        pass
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """编码单元分类器的估计器（estimator）

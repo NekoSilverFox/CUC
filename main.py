@@ -42,4 +42,5 @@ if __name__ == '__main__':
 
     estimator = CodingUnitClassifier(is_draw_2D=True)
     estimator.fit(X=x_train, y=y_train)
+
     pass
