@@ -42,12 +42,23 @@ class CodingUnitClassifier(object):
         self.CU_min = None  # 编码单元范围最小值
         self.CU_max = None  # 编码单元范围最小值
 
-        self.arr_CU_start_points = None  # 编码单元起始点列表
-        self.arr_CU_dL = None  # arr_CU_start_points 对应位置的编码单元的边长 `dL`
-        self.arr_CU_is_enable = None  # arr_CU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
-        self.arr_CU_splits_count = None  # arr_CU_start_points 对应位置的编码单元是通过几次分割所得到的
-        self.arr_CU_final_target = None  # arr_CU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
-        self.arr_CU_force_infection = None  # arr_CU_start_points 对应位置的编码单元的感染力度 (force of infection)
+        self.arrCU_start_points = None  # 编码单元起始点列表
+        self.arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
+        self.arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
+        self.arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
+        self.arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
+
+    def arr_checker(self):
+        """
+        检测当前 self 内数组的长度是否正常
+        :return:
+        """
+        if self.arrCU_start_points.shape[0] != self.arrCU_dL.shape[0] != self.arrCU_is_enable.shape[0] != self.arrCU_final_target.shape[0]:
+            raise ValueError(f'arrCU 长度异常：\n'
+                             f'\t{self.arrCU_start_points.shape[0]}'
+                             f'\t{self.arrCU_dL.shape[0]}'
+                             f'\t{self.arrCU_is_enable.shape[0]}'
+                             f'\t{self.arrCU_final_target.shape[0]}')
 
     def is_CU_need_split(self, arr1d_start_points: np.ndarray, dL: np.float) -> np.int:
         """判断当前 CU 是否需要继续预分割（如果需要返回 -1，如果不需要返回当前 CU 所属的目标值，并且 -2 代表为空白 CU）
@@ -96,13 +107,13 @@ class CodingUnitClassifier(object):
         Args:
             index_start_points (int): 需要分割 CU 的索引
         """
-        if self.arr_CU_is_enable[index_start_points] is False:
+        if self.arrCU_is_enable[index_start_points] is False:
             raise ValueError(f'[CUC-ERROR] CU on index {index_start_points} already disable, can not continue split')
 
-        self.arr_CU_is_enable[index_start_points] = False  # 既然对这个单元分割就说明这个单元不再使用了，因为它被差分成了许多新的小单元
+        self.arrCU_is_enable[index_start_points] = False  # 既然对这个单元分割就说明这个单元不再使用了，因为它被差分成了许多新的小单元
 
-        start_points = self.arr_CU_start_points[index_start_points, :]
-        new_dL = self.arr_CU_dL[index_start_points] / 2
+        start_points = self.arrCU_start_points[index_start_points, :]
+        new_dL = self.arrCU_dL[index_start_points] / 2
         end_points = np.array(start_points + new_dL)
 
         # 生成包含所有可能性组合的列表
@@ -116,24 +127,22 @@ class CodingUnitClassifier(object):
                     new_combination.append(start_points[j])
             combinations.append(new_combination)
 
-        print(f'[INFO] -------------split-------------\n'
+        print(f'\n\n[INFO] -------------split-------------\n'
               f'new_dL: {new_dL}\n'
               f'new_combination:\n{combinations}')
 
         # 分割后的 CU 添加至缓冲区
-        self.arr_CU_start_points = np.vstack([self.arr_CU_start_points, np.array(combinations)])
-        self.arr_CU_dL = np.hstack([self.arr_CU_dL, np.full(shape=(2 ** self.N_train,), fill_value=new_dL)])
-        self.arr_CU_is_enable = np.hstack([self.arr_CU_is_enable, np.full(shape=(2 ** self.N_train,), fill_value=True)])
-        self.arr_CU_splits_count = np.hstack([self.arr_CU_splits_count, np.full(shape=(2 ** self.N_train,),
-                                                                                fill_value=self.arr_CU_splits_count[index_start_points] + 1)])
-        self.arr_CU_final_target = np.hstack([self.arr_CU_final_target, np.full(shape=(2 ** self.N_train,), fill_value=-1, dtype=np.int)])
+        self.arrCU_start_points = np.vstack([self.arrCU_start_points, np.array(combinations)])
+        self.arrCU_dL = np.hstack([self.arrCU_dL, np.full(shape=(2 ** self.N_train,), fill_value=new_dL)])
+        self.arrCU_is_enable = np.hstack([self.arrCU_is_enable, np.full(shape=(2 ** self.N_train,), fill_value=True)])
+        self.arrCU_final_target = np.hstack([self.arrCU_final_target, np.full(shape=(2 ** self.N_train,), fill_value=-1, dtype=np.int)])
 
         self.split_count += 1
 
     def draw_2d(self, color_map) -> None:
         color_map = np.array(color_map)
         if color_map.shape[0] != self.N_train:
-            raise ValueError('[CUC-ERROR] color_map.shape[0] != self.N_train')
+            raise ValueError('\n[CUC-ERROR] color_map.shape[0] != self.N_train')
 
         plt.figure(figsize=(5, 5))
         # 绘制点
@@ -143,14 +152,14 @@ class CodingUnitClassifier(object):
             plt.scatter(tmp_data[tmp_data['target'] == target].values[:, 0],
                         tmp_data[tmp_data['target'] == target].values[:, 1])
 
-        for start_points, dL, target, color in zip(self.arr_CU_start_points, self.arr_CU_dL, self.arr_CU_final_target, color_map):
+        for start_points, dL, target, color in zip(self.arrCU_start_points, self.arrCU_dL, self.arrCU_final_target, color_map):
+            print(f'[INFO] Draw start_point: {start_points}, dL: {dL}, target: {target}')
             if -1 == target:
                 continue
-
             t_x_block = [start_points[0], start_points[0] + dL, start_points[0] + dL, start_points[0]]
             t_y_block = [start_points[1], start_points[1],      start_points[1] + dL, start_points[1] + dL]
             plt.plot(t_x_block, t_y_block, c='black')
-            if -2 == target:
+            if -1 == target:
                 plt.fill(t_x_block, t_y_block, c='grey', alpha=0.2)
             else:
                 plt.fill(t_x_block, t_y_block, c=color, alpha=0.2)
@@ -190,34 +199,35 @@ class CodingUnitClassifier(object):
         self.y_train = np.array(self.transfer_LabelEncoder.fit_transform(y=y), dtype=np.int)
 
         # 初始化 CU 相关 ndarray
-        self.arr_CU_start_points = np.full(shape=(1, self.N_train), fill_value=self.CU_min)  # 将初始化中的 0.0 替换为编码单元的起始点
-        self.arr_CU_dL = np.array([self.CU_max - self.CU_min])
-        self.arr_CU_is_enable = np.array([True])
-        self.arr_CU_splits_count = np.array([0])
-        self.arr_CU_final_target = np.array([-1], dtype=np.int)
-        self.arr_CU_force_infection = np.array([np.nan])
+        self.arrCU_start_points = np.full(shape=(1, self.N_train), fill_value=self.CU_min)  # 将初始化中的 0.0 替换为编码单元的起始点
+        self.arrCU_dL = np.array([self.CU_max - self.CU_min])
+        self.arrCU_is_enable = np.array([True])
+        self.arrCU_final_target = np.array([-1], dtype=np.int)
+        self.arrCU_force_infection = np.array([np.nan])
 
         # 预分割阶段
         current_index = 0
-        while current_index < self.arr_CU_start_points.shape[0]:
+        while current_index < self.arrCU_start_points.shape[0]:
+            self.arr_checker()
             # 如果当前 CU 已经废弃（disable），那么就没有再对他进行处理的意义了
-            if self.arr_CU_is_enable[current_index] is False:
+            if self.arrCU_is_enable[current_index] is False:
                 current_index += 1
                 continue
 
             # 如果当前 CU 启用，但是已经有了最终类别
-            if self.arr_CU_is_enable[current_index] is True and self.arr_CU_final_target[current_index] != -1:
+            if self.arrCU_is_enable[current_index] is True and self.arrCU_final_target[current_index] != -1:
                 current_index += 1
                 continue
 
-            type_split = self.is_CU_need_split(arr1d_start_points=self.arr_CU_start_points[current_index, :],
-                                               dL=self.arr_CU_dL[current_index])
-            print(f'[INFO] CUC.fit(): current_index: {current_index} \t type_split: {type_split}')
+            cur_target = self.is_CU_need_split(arr1d_start_points=self.arrCU_start_points[current_index, :],
+                                               dL=self.arrCU_dL[current_index])
+            print(f'[INFO] CUC.fit(): current_index: {current_index} \t cur_target: {cur_target}')
 
-            if type_split == -1:
+            if cur_target == -1:
                 self.split_CU_and_update2arrCU(index_start_points=current_index)
             else:
-                self.arr_CU_final_target[current_index] = type_split
+                self.arrCU_is_enable[current_index] = True
+                self.arrCU_final_target[current_index] = cur_target
                 if self.N_train == 2 and self.is_draw_2D:
                     self.draw_2d(color_map=('blue', 'red'))
 
