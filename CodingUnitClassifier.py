@@ -23,11 +23,11 @@ class CodingUnitClassifier(object):
         NOT_FINAL_CU = -1
         EMPTY_CU = -2
 
-    def __init__(self, num_continuing_splits=0, threshold_value=1.0, is_draw_2D=False, color_map=[], pic_save_path=None, **kw) -> None:
+    def __init__(self, num_refinement_splits=0, threshold_value=1.0, is_draw_2D=False, color_map=[], pic_save_path=None, **kw) -> None:
         """初始化
 
         Args:
-            num_continuing_splits (int, optional): 细化分割次数. Defaults to 0.
+            num_refinement_splits (int, optional): 细化分割次数. Defaults to 0.
             threshold_value (int, optional): 临界值. Defaults to  1.0.
             is_draw_2D (bool, optional): 当绘制 2D 数据集，是否绘制中途图像. Defaults to False.
         """
@@ -37,7 +37,7 @@ class CodingUnitClassifier(object):
         self.draw_count = 0  # 绘制次数记录（还用于拓展保存时的文件名）
 
         self.split_count = 0  # 分割次数计数器
-        self.num_continuing_splits = num_continuing_splits
+        self.num_refinement_splits = num_refinement_splits
         self.threshold_value = threshold_value  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
 
         self.transfer_LabelEncoder = None  # 目标值的转换器（转为数字）
@@ -84,7 +84,6 @@ class CodingUnitClassifier(object):
             return True
         else:
             return False
-
 
     def is_CU_need_split(self, arr1d_start_points: np.ndarray, dL: np.float) -> np.int:
         """判断当前 CU 是否需要继续预分割（如果需要返回 -1，如果不需要返回当前 CU 所属的目标值，并且 -2 代表为空白 CU）
@@ -138,7 +137,7 @@ class CodingUnitClassifier(object):
 
         self.arrCU_is_enable[index_start_points] = False  # 既然对这个单元分割就说明这个单元不再使用了，因为它被差分成了许多新的小单元
 
-        start_points = self.arrCU_start_points[index_start_points, :]
+        start_points = self.arrCU_start_points[index_start_points]
         new_dL = self.arrCU_dL[index_start_points] / 2
         end_points = np.array(start_points + new_dL)
 
@@ -162,9 +161,91 @@ class CodingUnitClassifier(object):
         self.arrCU_dL = np.hstack([self.arrCU_dL, np.full(shape=(2 ** self.N_train,), fill_value=new_dL)])
         self.arrCU_is_enable = np.hstack([self.arrCU_is_enable, np.full(shape=(2 ** self.N_train,), fill_value=True)])
         self.arrCU_final_target = np.hstack(
-            [self.arrCU_final_target, np.full(shape=(2 ** self.N_train,), fill_value=-1, dtype=np.int)])
+            [self.arrCU_final_target,
+             np.full(shape=(2 ** self.N_train,), fill_value=self.arrCU_final_target[index_start_points], dtype=np.int)])
 
         self.split_count += 1
+
+    def remove_disable_points(self):
+        """
+        删除 arr 群组中 disable 的 point
+        :return:
+        """
+        # 移除 self arr 数组群中 disable 的 CU，
+        # 同时重新标记细化分割中产生的新空白 CU（原含有粒子的大 CU 被重新切分后可能会产生不包含粒子的新 CU）
+        # 同时计算 CU 的密度
+        df_X_target = pd.DataFrame(self.X_train)
+        new_arrCU_start_points = None  # 编码单元起始点列表
+        new_arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
+        new_arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
+        new_arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
+        new_arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
+
+        for i in range(self.arrCU_start_points.shape[0]):
+            if self.arrCU_is_enable[i] is False:
+                continue
+            dL = self.arrCU_dL[i]
+            start_point = np.array(self.arrCU_start_points[i])
+            end_point = np.array(start_point + dL)
+
+            # 计算该单元中粒子的数量
+            tmp_s_is_X_in_CU = ((df_X_target > start_point) & (df_X_target < end_point)).all(axis=1)  # all代表按照y周判断是否这一行都为 True（也就是 point 每个对应维度都符合），返回对应位置为 True/False 的 pd.Series
+            num_point_in_CU = tmp_s_is_X_in_CU[tmp_s_is_X_in_CU == True].count()  # 该单元中粒子的数量
+            target_CU = None  # 编码单元的类别
+            density = None  # 密度（感染力度）
+
+            # CU 中无粒子
+            if 0 == num_point_in_CU:
+                density = 0.0
+                target_CU = self.CUType.EMPTY_CU.value
+            else:
+                density = num_point_in_CU / (dL ** self.N_train)
+                target_CU = self.arrCU_final_target[i]
+
+            # 第一个 enable 的 CU（也就是初始化 new_arr）
+            if new_arrCU_is_enable is None:
+                new_arrCU_start_points = np.array([self.arrCU_start_points[i]])
+                new_arrCU_dL = np.array(self.arrCU_dL[i])
+                new_arrCU_is_enable = np.array(self.arrCU_is_enable[i])
+                new_arrCU_final_target = np.array(target_CU)
+                new_arrCU_force_infection = np.array(density)
+
+            new_arrCU_start_points = np.vstack([new_arrCU_start_points, np.array(self.arrCU_start_points[i])])
+            new_arrCU_dL = np.append(new_arrCU_dL, self.arrCU_dL[i])
+            new_arrCU_is_enable = np.append(new_arrCU_is_enable, self.arrCU_is_enable[i])
+            new_arrCU_final_target = np.append(new_arrCU_final_target, target_CU)
+            new_arrCU_force_infection = np.append(new_arrCU_force_infection, density)
+
+        del self.arrCU_start_points
+        del self.arrCU_dL
+        del self.arrCU_is_enable
+        del self.arrCU_final_target
+        del self.arrCU_force_infection
+
+        self.arrCU_start_points = new_arrCU_start_points
+        self.arrCU_dL = new_arrCU_dL
+        self.arrCU_is_enable = new_arrCU_is_enable
+        self.arrCU_final_target = new_arrCU_final_target
+        self.arrCU_force_infection = new_arrCU_force_infection
+
+    def refinement_split(self, num: int) -> None:
+        """
+        细化分割
+        :param num:细化分割的次数
+        :return: None
+        """
+        self.arr_checker()  # 执行数组长度一致性检查
+
+        for run_time in range(num):
+            # 对每个 enable 的 CU 进行细化分割
+            for i in range(self.arrCU_start_points.shape[0]):
+                if self.arrCU_is_enable[i] is False:
+                    continue
+                self.split_CU_and_update2arrCU(index_start_points=i)
+                self.arrCU_is_enable[i] = False
+
+        self.remove_disable_points()  # 删除 disable 的粒子
+
 
     def draw_2d(self, color_map, pic_save_path=None) -> None:
         """
@@ -188,7 +269,9 @@ class CodingUnitClassifier(object):
 
         for i in range(self.arrCU_start_points.shape[0]):
             target = self.arrCU_final_target[i]
-            if -1 == target: continue
+            # 如果当前 CU 不是最终的，或者是 disable 的，那么没有绘制的必要
+            if (target == self.CUType.NOT_FINAL_CU.value) or (self.arrCU_is_enable[i] is False):
+                continue
 
             start_points = self.arrCU_start_points[i]
             dL = self.arrCU_dL[i]
@@ -206,7 +289,8 @@ class CodingUnitClassifier(object):
             plt.axis('equal')  # x、y 单位长度等长
 
         self.draw_count += 1
-        if pic_save_path is not None: plt.savefig(f'{pic_save_path}-{self.draw_count}.png')
+        if pic_save_path is not None:
+            plt.savefig(f'{pic_save_path}-{self.draw_count}.png')
         plt.show()
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
@@ -240,7 +324,7 @@ class CodingUnitClassifier(object):
         self.arrCU_start_points = np.full(shape=(1, self.N_train), fill_value=self.CU_min)  # 将初始化中的 0.0 替换为编码单元的起始点
         self.arrCU_dL = np.array([self.CU_max - self.CU_min])
         self.arrCU_is_enable = np.array([True])
-        self.arrCU_final_target = np.array([-1], dtype=np.int)
+        self.arrCU_final_target = np.array([self.CUType.NOT_FINAL_CU.value], dtype=np.int)
         self.arrCU_force_infection = np.array([np.nan])
 
         # 预分割阶段
@@ -267,6 +351,11 @@ class CodingUnitClassifier(object):
                 self.arrCU_is_enable[current_index] = True
                 self.arrCU_final_target[current_index] = cur_target
                 if self.N_train == 2 and self.is_draw_2D:
-                    self.draw_2d(color_map=('blue', 'red'))
+                    self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
             current_index += 1
+
+        # 细化分割
+        self.refinement_split(num=self.num_refinement_splits)
+        if self.N_train == 2 and self.is_draw_2D:
+            self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)

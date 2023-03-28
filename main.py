@@ -40,7 +40,8 @@ if __name__ == '__main__':
     x_train = transfer.fit_transform(X=x_train)
     x_test = transfer.transform(X=x_test)
 
-    estimator = CodingUnitClassifier(is_draw_2D=True)
+    estimator = CodingUnitClassifier(num_refinement_splits=1, is_draw_2D=True, color_map=('blue', 'red'), pic_save_path='./output/CUC')
     estimator.fit(X=x_train, y=y_train)
+    estimator.draw_2d(color_map=('blue', 'red'), pic_save_path='./output/CUC-res')
 
     pass
