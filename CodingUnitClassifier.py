@@ -8,6 +8,7 @@
 # -----------------------------------------
 import numpy as np
 import pandas as pd
+from enum import Enum
 from sklearn.utils import shuffle
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import LabelEncoder
@@ -18,6 +19,9 @@ from sklearn.model_selection import train_test_split
 
 class CodingUnitClassifier(object):
     """编码单元分类器预估器（estimator）"""
+    class CUType(Enum):
+        NOT_FINAL_CU = -1
+        EMPTY_CU = -2
 
     def __init__(self, num_continuing_splits=0, threshold_value=1.0, is_draw_2D=False, color_map=[], pic_save_path=None, **kw) -> None:
         """初始化
@@ -65,6 +69,23 @@ class CodingUnitClassifier(object):
                              f'\t{self.arrCU_is_enable.shape[0]}'
                              f'\t{self.arrCU_final_target.shape[0]}')
 
+    def is_point_in_CU(self, point: np.ndarray, start_point: np.ndarray, dL: float) -> bool:
+        """
+        判断点（样本）point，是否在编码单元中
+        :param point: 需要判断的点
+        :param start_point: 编码单元的起始点
+        :param dL: 编码单元的边长
+        :return: True-在这个 CU 中；False：不在这个 CU 中
+        """
+        point = np.array(point)
+        start_point = np.array(start_point)
+        end_point = np.array(start_point + dL)  # 结束点
+        if (point > start_point).all() and (point < end_point).all():
+            return True
+        else:
+            return False
+
+
     def is_CU_need_split(self, arr1d_start_points: np.ndarray, dL: np.float) -> np.int:
         """判断当前 CU 是否需要继续预分割（如果需要返回 -1，如果不需要返回当前 CU 所属的目标值，并且 -2 代表为空白 CU）
 
@@ -86,18 +107,17 @@ class CodingUnitClassifier(object):
                 f'[CUC-ERROR] arr1d_start_points.shape not correct: arr1d_start_points.shape is {arr1d_start_points.shape}, '
                 f'should be ({self.N_train}, )')
 
-        arr1d_end_points = np.array(arr1d_start_points + dL)  # 结束点
         s_type_count = pd.Series(index=np.unique(self.y_train)).fillna(value=0)  # 计数器，列索引为类别，对应位置数据为该 CU 中此种类粒子数量
 
         # 遍历判断点是否在这个 CU  中
         for col, col_target in zip(self.X_train, self.y_train):  # col_target 为当前行的目标值
             # 判断粒子在此维度上是否介于 CU 的起始点和结束点
-            if (col > arr1d_start_points).all() and (col < arr1d_end_points).all():
+            if self.is_point_in_CU(point=col, start_point=arr1d_start_points, dL=dL):
                 s_type_count[col_target] += 1
 
         # -1 代表这个编码单元里没有任何粒子，为空白编码单元
         if 0 == s_type_count.sum():
-            return -2
+            return self.CUType.EMPTY_CU.value
 
         # 如果不是空 CU，则看看某种 target 的粒子占比是否达到阈值
         s_type_count = s_type_count / s_type_count.sum()  # 转换为概率
@@ -105,7 +125,7 @@ class CodingUnitClassifier(object):
                 (1 == s_type_count[s_type_count.values == s_type_count.max()].shape[0]):  # 不允许出现两种相同概率
             return s_type_count[s_type_count.values == s_type_count.max()].index[0]
         else:
-            return -1
+            return self.CUType.NOT_FINAL_CU.value
 
     def split_CU_and_update2arrCU(self, index_start_points: int) -> None:
         """分割当前 CU，并将分割的结果更新到方法内部成员
@@ -241,7 +261,7 @@ class CodingUnitClassifier(object):
                                                dL=self.arrCU_dL[current_index])
             print(f'[INFO] CUC.fit(): current_index: {current_index} \t cur_target: {cur_target}')
 
-            if cur_target == -1:
+            if cur_target == self.CUType.NOT_FINAL_CU.value:
                 self.split_CU_and_update2arrCU(index_start_points=current_index)
             else:
                 self.arrCU_is_enable[current_index] = True
