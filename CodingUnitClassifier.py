@@ -132,10 +132,12 @@ class CodingUnitClassifier(object):
         Args:
             index_start_points (int): 需要分割 CU 的索引
         """
-        if self.arrCU_is_enable[index_start_points] is False:
+        if not self.arrCU_is_enable[index_start_points]:
             raise ValueError(f'[CUC-ERROR] CU on index {index_start_points} already disable, can not continue split')
 
         self.arrCU_is_enable[index_start_points] = False  # 既然对这个单元分割就说明这个单元不再使用了，因为它被差分成了许多新的小单元
+        # if self.arrCU_is_enable[index_start_points]:
+        #     print('>>>>>>>>>>>>>>>>>>> ERROR >>>>>>>>>>>>>>>>>>>')
 
         start_points = self.arrCU_start_points[index_start_points]
         new_dL = self.arrCU_dL[index_start_points] / 2
@@ -152,9 +154,9 @@ class CodingUnitClassifier(object):
                     new_combination.append(start_points[j])
             combinations.append(new_combination)
 
-        print(f'\n\n[INFO] -------------split-------------\n'
-              f'new_dL: {new_dL}\n'
-              f'new_combination:\n{combinations}')
+        # print(f'\n\n[INFO] -------------split-------------\n'
+        #       f'new_dL: {new_dL}\n'
+        #       f'new_combination:\n{combinations}')
 
         # 分割后的 CU 添加至缓冲区
         self.arrCU_start_points = np.vstack([self.arrCU_start_points, np.array(combinations)])
@@ -175,6 +177,7 @@ class CodingUnitClassifier(object):
         # 同时重新标记细化分割中产生的新空白 CU（原含有粒子的大 CU 被重新切分后可能会产生不包含粒子的新 CU）
         # 同时计算 CU 的密度
         df_X_target = pd.DataFrame(self.X_train)
+
         new_arrCU_start_points = None  # 编码单元起始点列表
         new_arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
         new_arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
@@ -182,7 +185,7 @@ class CodingUnitClassifier(object):
         new_arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
 
         for i in range(self.arrCU_start_points.shape[0]):
-            if self.arrCU_is_enable[i] is False:
+            if not self.arrCU_is_enable[i]:
                 continue
             dL = self.arrCU_dL[i]
             start_point = np.array(self.arrCU_start_points[i])
@@ -209,6 +212,7 @@ class CodingUnitClassifier(object):
                 new_arrCU_is_enable = np.array(self.arrCU_is_enable[i])
                 new_arrCU_final_target = np.array(target_CU)
                 new_arrCU_force_infection = np.array(density)
+                continue
 
             new_arrCU_start_points = np.vstack([new_arrCU_start_points, np.array(self.arrCU_start_points[i])])
             new_arrCU_dL = np.append(new_arrCU_dL, self.arrCU_dL[i])
@@ -228,6 +232,47 @@ class CodingUnitClassifier(object):
         self.arrCU_final_target = new_arrCU_final_target
         self.arrCU_force_infection = new_arrCU_force_infection
 
+    def pre_split(self):
+        """
+        预分割阶段
+        :return:
+        """
+        # 预分割阶段
+        current_index = 0
+        while current_index < self.arrCU_start_points.shape[0]:
+            self.arr_checker()
+
+            # 如果当前 CU 已经废弃（disable），那么就没有再对他进行处理的意义了
+            if not self.arrCU_is_enable[current_index]:
+                current_index += 1
+                continue
+
+            # 如果当前 CU 启用，但是已经有了最终类别
+            if self.arrCU_is_enable[current_index] and self.arrCU_final_target[current_index] != self.CUType.NOT_FINAL_CU.value:
+                current_index += 1
+                continue
+
+            cur_target = self.is_CU_need_split(arr1d_start_points=self.arrCU_start_points[current_index],
+                                               dL=self.arrCU_dL[current_index])
+            print(f'[INFO] CUC.fit(): current_index: {current_index} \t cur_target: {cur_target}')
+
+            if cur_target == self.CUType.NOT_FINAL_CU.value:
+                self.split_CU_and_update2arrCU(index_start_points=current_index)
+            else:
+                self.arrCU_is_enable[current_index] = True
+                self.arrCU_final_target[current_index] = cur_target
+                if self.N_train == 2 and self.is_draw_2D:
+                    self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
+
+            current_index += 1
+            # print(f'\n>>>>>>>>>>>>>>>> 预分割阶段 {current_index}')
+            # res = pd.concat([pd.DataFrame(self.arrCU_start_points),
+            #                  pd.Series(self.arrCU_is_enable),
+            #                  pd.Series(self.arrCU_dL),
+            #                  pd.Series(self.arrCU_final_target)], axis=1)
+            # res.columns = ('x', 'y', 'is_enable', 'dL', 'target')
+            # print(res)
+
     def refinement_split(self, num: int) -> None:
         """
         细化分割
@@ -242,10 +287,6 @@ class CodingUnitClassifier(object):
                 if self.arrCU_is_enable[i] is False:
                     continue
                 self.split_CU_and_update2arrCU(index_start_points=i)
-                self.arrCU_is_enable[i] = False
-
-        self.remove_disable_points()  # 删除 disable 的粒子
-
 
     def draw_2d(self, color_map, pic_save_path=None) -> None:
         """
@@ -279,7 +320,7 @@ class CodingUnitClassifier(object):
             t_y_block = [start_points[1], start_points[1],      start_points[1] + dL, start_points[1] + dL]
 
             plt.plot(t_x_block, t_y_block, c='black')  # 黑色边框
-            if -2 == target:
+            if self.CUType.EMPTY_CU.value == target:
                 plt.fill(t_x_block, t_y_block, c='grey', alpha=0.2)
             else:
                 plt.fill(t_x_block, t_y_block, c=color_map[target], alpha=0.2)
@@ -307,7 +348,7 @@ class CodingUnitClassifier(object):
         if X.shape[0] != y.shape[0]:
             raise ValueError(f'[CUC-ERROR] X.shape != y.shape: X.shape is {X.shape[0]}, y.shape is {y.shape[0]}')
 
-        # 初始化 CUC 配置参数
+        # =================================== 初始化 CUC 配置参数 ===================================
         self.N_train = X.shape[1]
         self.X_train = np.array(X)
         self.y_train = np.array(y)
@@ -326,36 +367,34 @@ class CodingUnitClassifier(object):
         self.arrCU_is_enable = np.array([True])
         self.arrCU_final_target = np.array([self.CUType.NOT_FINAL_CU.value], dtype=np.int)
         self.arrCU_force_infection = np.array([np.nan])
+        # =========================================================================================
 
-        # 预分割阶段
-        current_index = 0
-        while current_index < self.arrCU_start_points.shape[0]:
-            self.arr_checker()
-            # 如果当前 CU 已经废弃（disable），那么就没有再对他进行处理的意义了
-            if self.arrCU_is_enable[current_index] is False:
-                current_index += 1
-                continue
+        # ========================================= 预分割 =========================================
+        self.pre_split()
+        self.remove_disable_points()
+        # =========================================================================================
 
-            # 如果当前 CU 启用，但是已经有了最终类别
-            if self.arrCU_is_enable[current_index] is True and self.arrCU_final_target[current_index] != -1:
-                current_index += 1
-                continue
+        print('\n>>>>>>>>>>>>>>>> 完成预分割后的arr结果')
+        res = pd.concat([pd.DataFrame(self.arrCU_start_points),
+                         pd.Series(self.arrCU_is_enable),
+                         pd.Series(self.arrCU_dL),
+                         pd.Series(self.arrCU_final_target),
+                         pd.Series(self.arrCU_force_infection)], axis=1)
+        res.columns = ('x', 'y', 'is_enable', 'dL', 'target', 'force_infection')
+        print(res)
 
-            cur_target = self.is_CU_need_split(arr1d_start_points=self.arrCU_start_points[current_index, :],
-                                               dL=self.arrCU_dL[current_index])
-            print(f'[INFO] CUC.fit(): current_index: {current_index} \t cur_target: {cur_target}')
-
-            if cur_target == self.CUType.NOT_FINAL_CU.value:
-                self.split_CU_and_update2arrCU(index_start_points=current_index)
-            else:
-                self.arrCU_is_enable[current_index] = True
-                self.arrCU_final_target[current_index] = cur_target
-                if self.N_train == 2 and self.is_draw_2D:
-                    self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
-
-            current_index += 1
-
-        # 细化分割
+        # ========================================= 细化分割 =========================================
         self.refinement_split(num=self.num_refinement_splits)
+        self.remove_disable_points()
         if self.N_train == 2 and self.is_draw_2D:
             self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
+
+        print('\n>>>>>>>>>>>>>>>> 完成细化分割后的arr结果')
+        res = pd.concat([pd.DataFrame(self.arrCU_start_points),
+                         pd.Series(self.arrCU_is_enable),
+                         pd.Series(self.arrCU_dL),
+                         pd.Series(self.arrCU_final_target),
+                         pd.Series(self.arrCU_force_infection)], axis=1)
+        res.columns = ('x', 'y', 'is_enable', 'dL', 'target', 'force_infection')
+        print(res)
+        # =========================================================================================
