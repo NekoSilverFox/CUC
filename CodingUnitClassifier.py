@@ -56,6 +56,7 @@ class CodingUnitClassifier(object):
         self.arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
         self.arrCU_num_point = None # arrCU_start_points 对应位置的编码单元中粒子数量
         self.arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
+        self.arrCU_is_been_I = None  # 当前单元是否成为过感染者（I）
 
     def arr_checker(self):
         """
@@ -315,12 +316,24 @@ class CodingUnitClassifier(object):
         """
         self.arr_checker()
 
+        self.arrCU_is_been_I = np.full(shape=self.arrCU_is_enable.shape, fill_value=False)  # False 代表从来没感染过他人
+
         # 如果还有空白的编码单元就一直循环
         while np.any(self.arrCU_final_target == self.CUType.EMPTY_CU.value):
+            # 获取没有使用过的感染者
+            index_I = None  # 当前的感染者是感染力度最大的，这里获取他的下标
+            tmp_fi_max = -1.0
+            for i in range(self.arrCU_is_enable.shape[0]):
+                if self.arrCU_is_been_I[i] or self.arrCU_force_infection[i] <= tmp_fi_max:
+                    continue
+                index_I = i
+                tmp_fi_max = self.arrCU_force_infection[i]
+
             # 感染力度最大的单元去感染其他粒子
             # I - 感染者，他去感染其他单元
             # S - 被感染者，他被 I 所感染
-            index_I = self.arrCU_force_infection.argmax()  # 当前的感染者是感染力度最大的，这里获取他的下标
+            # index_I = self.arrCU_force_infection.argmax()  #
+            self.arrCU_is_been_I[index_I] = True
             target_I = self.arrCU_final_target[index_I]
             start_point_I = self.arrCU_start_points[index_I]
             end_point_I = np.array(start_point_I + self.arrCU_dL[index_I])
@@ -365,8 +378,7 @@ class CodingUnitClassifier(object):
                 self.arrCU_force_infection[i] = new_fi
                 self.arrCU_final_target[i] = target_I
             # <<<<<<<<<<<<<<<<<< 感染结束
-
-        self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
+            self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
     def draw_2d(self, color_map, pic_save_path=None) -> None:
         """
@@ -449,10 +461,10 @@ class CodingUnitClassifier(object):
         self.arrCU_force_infection = np.array([np.nan])
         # =========================================================================================
 
+
         # ========================================= 预分割 =========================================
         self.pre_split()
         self.remove_disable_points()
-        # =========================================================================================
 
         print('\n>>>>>>>>>>>>>>>> 完成预分割后的arr结果')
         res = pd.concat([pd.DataFrame(self.arrCU_start_points),
@@ -462,6 +474,8 @@ class CodingUnitClassifier(object):
                          pd.Series(self.arrCU_force_infection)], axis=1)
         res.columns = ('x', 'y', 'is_enable', 'dL', 'target', 'force_infection')
         print(res)
+        # =========================================================================================
+
 
         # ========================================= 细化分割 =========================================
         self.refinement_split(num=self.num_refinement_splits)

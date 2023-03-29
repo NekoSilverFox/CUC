@@ -6,13 +6,15 @@
 # @Software: PyCharm
 # @Github  ：https://github.com/NekoSilverFox
 # -----------------------------------------
+import pandas as pd
 
 from CodingUnitClassifier import *
 import warnings
 
 warnings.filterwarnings('ignore')
 
-if __name__ == '__main__':
+
+def test_data_1():
     # 获取数据集（具有正态分布的）
     x_1_1 = pd.Series(np.random.normal(loc=22, scale=4, size=50), name='x1')
     x_1_2 = pd.Series(np.random.normal(loc=24, scale=4, size=50), name='x2')
@@ -33,7 +35,41 @@ if __name__ == '__main__':
     data = shuffle(data).reset_index(drop=True)  # 打乱样本顺序
 
     # 划分数据集
-    x_train, x_test, y_train, y_test = train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+
+def test_data_a():
+    data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_a.txt', sep='\t')
+    data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_a_test.txt', sep='\t')
+    data = pd.concat([data_train, data_test], axis=0)
+    data = shuffle(data).reset_index(drop=True)
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+
+def test_data_b():
+    data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_b.txt', sep='\t')
+    data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_b_test.txt', sep='\t')
+    data = pd.concat([data_train, data_test], axis=0)
+    data = shuffle(data).reset_index(drop=True)
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+
+def test_data_d():
+    data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_d.txt', sep='\t')
+    data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_d_test.txt', sep='\t')
+    data = pd.concat([data_train, data_test], axis=0)
+    data = shuffle(data).reset_index(drop=True)
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+
+def test_data_e():
+    data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_e.txt', sep='\t')
+    data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_e_test.txt', sep='\t')
+    data = pd.concat([data_train, data_test], axis=0)
+    data = shuffle(data).reset_index(drop=True)
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+
+if __name__ == '__main__':
+    # 划分数据集
+    # x_train, x_test, y_train, y_test = test_data_1()
+    x_train, x_test, y_train, y_test = test_data_1()
+
 
     # 归一化
     transfer = MinMaxScaler(feature_range=(0, 10))
@@ -42,6 +78,5 @@ if __name__ == '__main__':
 
     estimator = CodingUnitClassifier(num_refinement_splits=1, is_draw_2D=True, color_map=('blue', 'red'), pic_save_path='./output/CUC')
     estimator.fit(X=x_train, y=y_train)
-    estimator.draw_2d(color_map=('blue', 'red'), pic_save_path='./output/CUC-res')
 
     pass
