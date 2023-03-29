@@ -54,6 +54,7 @@ class CodingUnitClassifier(object):
         self.arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
         self.arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
         self.arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
+        self.arrCU_num_point = None # arrCU_start_points 对应位置的编码单元中粒子数量
         self.arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
 
     def arr_checker(self):
@@ -182,6 +183,7 @@ class CodingUnitClassifier(object):
         new_arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
         new_arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
         new_arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
+        new_arrCU_num_point = None  # arrCU_start_points 对应位置的编码单元中粒子数量
         new_arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
 
         for i in range(self.arrCU_start_points.shape[0]):
@@ -192,7 +194,7 @@ class CodingUnitClassifier(object):
             end_point = np.array(start_point + dL)
 
             # 计算该单元中粒子的数量
-            tmp_s_is_X_in_CU = ((df_X_target > start_point) & (df_X_target < end_point)).all(axis=1)  # all代表按照y周判断是否这一行都为 True（也就是 point 每个对应维度都符合），返回对应位置为 True/False 的 pd.Series
+            tmp_s_is_X_in_CU = ((df_X_target > start_point) & (df_X_target < end_point)).all(axis=1)  # all代表按行判断是否这一行都为 True（也就是 point 每个对应维度都符合），返回对应位置为 True/False 的 pd.Series
             num_point_in_CU = tmp_s_is_X_in_CU[tmp_s_is_X_in_CU == True].count()  # 该单元中粒子的数量
             target_CU = None  # 编码单元的类别
             density = None  # 密度（感染力度）
@@ -211,6 +213,7 @@ class CodingUnitClassifier(object):
                 new_arrCU_dL = np.array(self.arrCU_dL[i])
                 new_arrCU_is_enable = np.array(self.arrCU_is_enable[i])
                 new_arrCU_final_target = np.array(target_CU)
+                new_arrCU_num_point = np.array(num_point_in_CU)
                 new_arrCU_force_infection = np.array(density)
                 continue
 
@@ -218,18 +221,21 @@ class CodingUnitClassifier(object):
             new_arrCU_dL = np.append(new_arrCU_dL, self.arrCU_dL[i])
             new_arrCU_is_enable = np.append(new_arrCU_is_enable, self.arrCU_is_enable[i])
             new_arrCU_final_target = np.append(new_arrCU_final_target, target_CU)
+            new_arrCU_num_point = np.append(new_arrCU_num_point, num_point_in_CU)
             new_arrCU_force_infection = np.append(new_arrCU_force_infection, density)
 
         del self.arrCU_start_points
         del self.arrCU_dL
         del self.arrCU_is_enable
         del self.arrCU_final_target
+        del self.arrCU_num_point
         del self.arrCU_force_infection
 
         self.arrCU_start_points = new_arrCU_start_points
         self.arrCU_dL = new_arrCU_dL
         self.arrCU_is_enable = new_arrCU_is_enable
         self.arrCU_final_target = new_arrCU_final_target
+        self.arrCU_num_point = new_arrCU_num_point
         self.arrCU_force_infection = new_arrCU_force_infection
 
     def pre_split(self):
@@ -287,6 +293,80 @@ class CodingUnitClassifier(object):
                 if self.arrCU_is_enable[i] is False:
                     continue
                 self.split_CU_and_update2arrCU(index_start_points=i)
+
+    def is_overlapping(self, point_1_start: float, point_1_end: float, point_2_start: float, point_2_end: float) -> bool:
+        """判断某个维度的投影下，两个水平的线段是否相交
+
+        Args:
+            point_1_start (float): point1的起始点（CU某个维度上的最小值）
+            point_1_end (float): point1的结束点（CU某个维度上的最大值）
+            point_2_start (float): point2的起始点（CU某个维度上的最小值）
+            point_2_end (float): point2的结束点（CU某个维度上的最大值）
+
+        Returns:
+            bool: True 代表相交，False 代表不相交
+        """
+        return (point_1_end >= point_2_start) and (point_2_end >= point_1_start)
+
+    def infection(self) -> None:
+        """
+        感染阶段
+        :return: 无
+        """
+        self.arr_checker()
+
+        # 如果还有空白的编码单元就一直循环
+        while np.any(self.arrCU_final_target == self.CUType.EMPTY_CU.value):
+            # 感染力度最大的单元去感染其他粒子
+            # I - 感染者，他去感染其他单元
+            # S - 被感染者，他被 I 所感染
+            index_I = self.arrCU_force_infection.argmax()  # 当前的感染者是感染力度最大的，这里获取他的下标
+            target_I = self.arrCU_final_target[index_I]
+            start_point_I = self.arrCU_start_points[index_I]
+            end_point_I = np.array(start_point_I + self.arrCU_dL[index_I])
+
+            # 遍历所有 CU，当前感染者I 要去感染CU（被感染者 S）的 index
+            arr_index_S = np.array(index_I)
+            sum_point = self.arrCU_num_point[index_I]  # 所有被感染者CU中的粒子数量
+            sum_V = (self.arrCU_dL[index_I] ** self.N_train)  # 所有被感染者CU中的体积
+            for i in range(self.arrCU_start_points.shape[0]):
+                # 当前 CU 已经是别的target，并且不是空白 CU
+                if (self.arrCU_final_target[i] != target_I) and (self.arrCU_final_target[i] != self.CUType.EMPTY_CU.value):
+                    continue
+                # 不能自己感染自己
+                if i == index_I:
+                    continue
+
+                start_point_S = self.arrCU_start_points[i]
+                end_point_S = np.array(start_point_S + self.arrCU_dL[i])
+
+                # 判断每一维度（数列-D 表示特征）的投影是否都相交
+                same_d_count = 0  # 如果某个维度上相等（same_d_count = self.N_train），则 +1，如果每个维度上的投影都相交，则说明两个 CU 重叠
+                for d in range(self.N_train):
+                    if self.is_overlapping(point_1_start=start_point_I[d], point_1_end=end_point_I[d],
+                                           point_2_start=start_point_S[d], point_2_end=end_point_S[d]):
+                        same_d_count += 1
+                    else:
+                        break
+
+                # 如果 I 与 S 不相邻，直接进行下一次迭代
+                if same_d_count != self.N_train:
+                    continue
+
+                # 记录被感染者 S 的下标
+                arr_index_S = np.append(arr_index_S, i)
+                sum_point += self.arrCU_num_point[i]
+                sum_V += (self.arrCU_dL[i] ** self.N_train)
+
+            # 【感染】如果相邻，则进行感染，并且重置他们的感染力度和单元类别 >>>>>>>>>>>>>>>>>
+            print(f'[INFO] CU_{index_I} 将感染 {arr_index_S}')
+            new_fi = sum_point / sum_V  # 新的感染力度
+            for i in arr_index_S:
+                self.arrCU_force_infection[i] = new_fi
+                self.arrCU_final_target[i] = target_I
+            # <<<<<<<<<<<<<<<<<< 感染结束
+
+        self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
     def draw_2d(self, color_map, pic_save_path=None) -> None:
         """
@@ -398,3 +478,5 @@ class CodingUnitClassifier(object):
         res.columns = ('x', 'y', 'is_enable', 'dL', 'target', 'force_infection')
         print(res)
         # =========================================================================================
+
+        self.infection()
