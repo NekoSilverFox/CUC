@@ -87,6 +87,22 @@ class CodingUnitClassifier(object):
         else:
             return False
 
+    def predict_is_point_in_CU(self, point: np.ndarray, start_point: np.ndarray, dL: float) -> bool:
+        """
+        【仅供 fit 结束后预测阶段使用。因为需要预测的点可能落到编码单元的边缘】预测判断点（样本）point，是否在编码单元中
+        :param point: 需要判断的点
+        :param start_point: 编码单元的起始点
+        :param dL: 编码单元的边长
+        :return: True-在这个 CU 中；False：不在这个 CU 中
+        """
+        point = np.array(point)
+        start_point = np.array(start_point)
+        end_point = np.array(start_point + dL)  # 结束点
+        if (point >= start_point).all() and (point <= end_point).all():
+            return True
+        else:
+            return False
+
     def is_CU_need_split(self, arr1d_start_points: np.ndarray, dL: np.float) -> np.int:
         """判断当前 CU 是否需要继续预分割（如果需要返回 -1，如果不需要返回当前 CU 所属的目标值，并且 -2 代表为空白 CU）
 
@@ -291,7 +307,7 @@ class CodingUnitClassifier(object):
         for run_time in range(num):
             # 对每个 enable 的 CU 进行细化分割
             for i in range(self.arrCU_start_points.shape[0]):
-                if self.arrCU_is_enable[i] is False:
+                if not self.arrCU_is_enable[i]:
                     continue
                 self.split_CU_and_update2arrCU(index_start_points=i)
 
@@ -317,9 +333,10 @@ class CodingUnitClassifier(object):
         self.arr_checker()
 
         self.arrCU_is_been_I = np.full(shape=self.arrCU_is_enable.shape, fill_value=False)  # False 代表从来没感染过他人
-
+        run_time = 0
         # 如果还有空白的编码单元就一直循环
         while np.any(self.arrCU_final_target == self.CUType.EMPTY_CU.value):
+            run_time += 1
             # 获取没有使用过的感染者
             index_I = None  # 当前的感染者是感染力度最大的，这里获取他的下标
             tmp_fi_max = -1.0
@@ -372,13 +389,17 @@ class CodingUnitClassifier(object):
                 sum_V += (self.arrCU_dL[i] ** self.N_train)
 
             # 【感染】如果相邻，则进行感染，并且重置他们的感染力度和单元类别 >>>>>>>>>>>>>>>>>
-            print(f'[INFO] CU_{index_I} 将感染 {arr_index_S}')
-            new_fi = sum_point / sum_V  # 新的感染力度
+            print(f'[INFO] CU_{index_I} 将感染 {arr_index_S}, {arr_index_S.shape}')
+            if arr_index_S.shape == ():  # 可能出现空的情况
+                continue
+
+            new_fi = sum_point / sum_V  # 新感染力度
             for i in arr_index_S:
                 self.arrCU_force_infection[i] = new_fi
                 self.arrCU_final_target[i] = target_I
             # <<<<<<<<<<<<<<<<<< 感染结束
-            self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
+            if self.is_draw_2D and (2 == self.N_train):
+                self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
     def draw_2d(self, color_map, pic_save_path=None) -> None:
         """
@@ -387,6 +408,10 @@ class CodingUnitClassifier(object):
         :param pic_save_path:
         :return:
         """
+        # self.draw_count += 1
+        # if self.draw_count > 70 and self.draw_count % 10 != 0:
+        #     return
+
         color_map = np.array(color_map)
         if color_map.shape[0] != self.N_train:
             raise ValueError('\n[CUC-ERROR] color_map.shape[0] != self.N_train')
@@ -411,7 +436,7 @@ class CodingUnitClassifier(object):
             t_x_block = [start_points[0], start_points[0] + dL, start_points[0] + dL, start_points[0]]
             t_y_block = [start_points[1], start_points[1],      start_points[1] + dL, start_points[1] + dL]
 
-            plt.plot(t_x_block, t_y_block, c='black')  # 黑色边框
+            # plt.plot(t_x_block, t_y_block, c='black')  # 黑色边框
             if self.CUType.EMPTY_CU.value == target:
                 plt.fill(t_x_block, t_y_block, c='grey', alpha=0.2)
             else:
@@ -425,6 +450,7 @@ class CodingUnitClassifier(object):
         if pic_save_path is not None:
             plt.savefig(f'{pic_save_path}-{self.draw_count}.png')
         plt.show()
+        plt.close('all')  # 必须手动释放内存，不然当需要绘制很多图形时会导致内存泄漏
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         """编码单元分类器的估计器（estimator）
@@ -494,3 +520,19 @@ class CodingUnitClassifier(object):
         # =========================================================================================
 
         self.infection()
+
+    def predict(self, X: np.ndarray) -> list:
+        if X.shape[1] != self.N_train:
+            raise ValueError(f'[CUC-ERROR] In method predict: X.shape != self.N_train: X.shape is {X.shape[1]}, y.shape is {self.N_train}')
+
+        res_predict = []
+        for x in X:
+            for i in range(self.arrCU_start_points.shape[0]):
+                if self.predict_is_point_in_CU(x=x, start_point=self.arrCU_start_points[i], dL=self.arrCU_dL[i]):
+                    res_predict.append(self.transfer_LabelEncoder.classes_[self.arrCU_final_target[i]])
+                    break
+
+        return res_predict
+
+    def score(self, X: np.ndarray, y: np.ndarray) -> float:
+        pass

@@ -13,6 +13,8 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
+RANDOM_STATE = 90102
+
 
 def test_data_1():
     # 获取数据集（具有正态分布的）
@@ -37,38 +39,78 @@ def test_data_1():
     # 划分数据集
     return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
 
+
 def test_data_a():
     data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_a.txt', sep='\t')
     data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_a_test.txt', sep='\t')
     data = pd.concat([data_train, data_test], axis=0)
     data = shuffle(data).reset_index(drop=True)
-    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
+
 
 def test_data_b():
     data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_b.txt', sep='\t')
     data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_b_test.txt', sep='\t')
     data = pd.concat([data_train, data_test], axis=0)
     data = shuffle(data).reset_index(drop=True)
-    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
+
 
 def test_data_d():
     data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_d.txt', sep='\t')
     data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_d_test.txt', sep='\t')
     data = pd.concat([data_train, data_test], axis=0)
     data = shuffle(data).reset_index(drop=True)
-    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
+
 
 def test_data_e():
     data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_e.txt', sep='\t')
     data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_e_test.txt', sep='\t')
     data = pd.concat([data_train, data_test], axis=0)
     data = shuffle(data).reset_index(drop=True)
-    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
+    return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
+
+
+def dataset_fourclass():
+    data = pd.read_csv(filepath_or_buffer='./test_data/fourclass.csv')
+    data = data.dropna(axis=0)
+    data_1 = data[data['target'] == -1.0]
+    data_2 = data[data['target'] == 1.0]
+    plt.figure(figsize=(5, 5))
+    plt.scatter(x=data_1.iloc[:, 0], y=data_1.iloc[:, 1], s=5, c='blue')
+    plt.scatter(x=data_2.iloc[:, 0], y=data_2.iloc[:, 1], s=5, c='red')
+    plt.show()
+
+    return train_test_split(data.values[:, :-1], data.values[:, -1], random_state=RANDOM_STATE)
+
+def dataset_nesting():
+    plt.figure(figsize=(5, 5))
+    tmp_x1 = np.random.uniform(low=0, high=10, size=500)
+    tmp_y1 = np.random.uniform(low=0, high=10, size=500)
+    tmp_t1 = np.full(shape=(500,), fill_value='red')
+    data_1 = pd.concat([pd.Series(tmp_x1), pd.Series(tmp_y1), pd.Series(tmp_t1)], axis=1)
+    data_1.columns = ('x', 'y', 'target')
+    data_1 = data_1.drop(data_1.query('x > 3 & x < 7 & y > 2 & y < 8').index, axis=0)
+    plt.scatter(data_1['x'], data_1['y'], s=5, c='red')
+
+    tmp_x2 = np.random.uniform(low=3, high=7, size=100)
+    tmp_y2 = np.random.uniform(low=2, high=8, size=100)
+    tmp_t2 = np.full(shape=(100,), fill_value='blue')
+    data_2 = pd.concat([pd.Series(tmp_x2), pd.Series(tmp_y2), pd.Series(tmp_t2)], axis=1)
+    data_2.columns = ('x', 'y', 'target')
+    plt.scatter(data_2['x'], data_2['y'], s=5, c='blue')
+    plt.show()
+
+    data = pd.concat([data_1, data_2], axis=0)
+    data = shuffle(data).reset_index(drop=True)
+    return train_test_split(data.values[:, :-1], data.values[:, -1], random_state=RANDOM_STATE)
+
 
 if __name__ == '__main__':
     # 划分数据集
-    # x_train, x_test, y_train, y_test = test_data_1()
-    x_train, x_test, y_train, y_test = test_data_1()
+    x_train, x_test, y_train, y_test = test_data_e()
+    # x_train, x_test, y_train, y_test = dataset_fourclass()
 
 
     # 归一化
@@ -76,7 +118,10 @@ if __name__ == '__main__':
     x_train = transfer.fit_transform(X=x_train)
     x_test = transfer.transform(X=x_test)
 
-    estimator = CodingUnitClassifier(num_refinement_splits=1, is_draw_2D=True, color_map=('blue', 'red'), pic_save_path='./output/CUC')
+    estimator = CodingUnitClassifier(num_refinement_splits=2, threshold_value=0.98,
+                                     is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
     estimator.fit(X=x_train, y=y_train)
+    estimator.draw_2d(color_map=('blue', 'red'), pic_save_path='./output/CUC-fourclass')
+
 
     pass
