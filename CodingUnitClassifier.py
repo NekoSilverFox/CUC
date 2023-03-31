@@ -6,6 +6,8 @@
 # @Software: PyCharm
 # @Github  ：https://github.com/NekoSilverFox
 # -----------------------------------------
+import random
+
 import numpy as np
 import pandas as pd
 from enum import Enum
@@ -42,7 +44,7 @@ class CodingUnitClassifier(object):
 
         self.transfer_LabelEncoder = None  # 目标值的转换器（转为数字）
 
-        self.N_train = None  # 训练集的维度
+        self.D_train = None  # 训练集的维度数量: int
         self.X_train = None  # 特征值（训练集）
         self.y_train = None  # 目标值（训练集）
         self.df_train = None  # 以 pandas.DataFream 形式的训练接数据（特征值和训练集是合并在一起的）。目标值的索引为 `target`，特征值的索引为 `x`，x 为从 0 开始的数字
@@ -95,9 +97,10 @@ class CodingUnitClassifier(object):
         :param dL: 编码单元的边长
         :return: True-在这个 CU 中；False：不在这个 CU 中
         """
+        small_value = self.arrCU_dL.min() / 100  # 防止精度损失的值，算是一个容错值
         point = np.array(point)
-        start_point = np.array(start_point)
-        end_point = np.array(start_point + dL)  # 结束点
+        start_point = np.array(start_point) - small_value  # 加上值是为了可能因为精度损失导致的不正确
+        end_point = np.array(start_point + dL) + small_value  # 结束点
         if (point >= start_point).all() and (point <= end_point).all():
             return True
         else:
@@ -119,10 +122,10 @@ class CodingUnitClassifier(object):
         """
         if dL <= 0:
             raise ValueError(f'[CUC-ERROR] dl can not <= 0, your dL is {dL}')
-        if arr1d_start_points.shape[0] != self.N_train:
+        if arr1d_start_points.shape[0] != self.D_train:
             raise ValueError(
                 f'[CUC-ERROR] arr1d_start_points.shape not correct: arr1d_start_points.shape is {arr1d_start_points.shape}, '
-                f'should be ({self.N_train}, )')
+                f'should be ({self.D_train}, )')
 
         s_type_count = pd.Series(index=np.unique(self.y_train)).fillna(value=0)  # 计数器，列索引为类别，对应位置数据为该 CU 中此种类粒子数量
 
@@ -163,9 +166,9 @@ class CodingUnitClassifier(object):
 
         # 生成包含所有可能性组合的列表
         combinations = []
-        for i in range(2 ** self.N_train):
+        for i in range(2 ** self.D_train):
             new_combination = []
-            for j in range(self.N_train):
+            for j in range(self.D_train):
                 if i & (1 << j):
                     new_combination.append(end_points[j])
                 else:
@@ -178,11 +181,11 @@ class CodingUnitClassifier(object):
 
         # 分割后的 CU 添加至缓冲区
         self.arrCU_start_points = np.vstack([self.arrCU_start_points, np.array(combinations)])
-        self.arrCU_dL = np.hstack([self.arrCU_dL, np.full(shape=(2 ** self.N_train,), fill_value=new_dL)])
-        self.arrCU_is_enable = np.hstack([self.arrCU_is_enable, np.full(shape=(2 ** self.N_train,), fill_value=True)])
+        self.arrCU_dL = np.hstack([self.arrCU_dL, np.full(shape=(2 ** self.D_train,), fill_value=new_dL)])
+        self.arrCU_is_enable = np.hstack([self.arrCU_is_enable, np.full(shape=(2 ** self.D_train,), fill_value=True)])
         self.arrCU_final_target = np.hstack(
             [self.arrCU_final_target,
-             np.full(shape=(2 ** self.N_train,), fill_value=self.arrCU_final_target[index_start_points], dtype=np.int)])
+             np.full(shape=(2 ** self.D_train,), fill_value=self.arrCU_final_target[index_start_points], dtype=np.int)])
 
         self.split_count += 1
 
@@ -221,7 +224,7 @@ class CodingUnitClassifier(object):
                 density = 0.0
                 target_CU = self.CUType.EMPTY_CU.value
             else:
-                density = num_point_in_CU / (dL ** self.N_train)
+                density = num_point_in_CU / (dL ** self.D_train)
                 target_CU = self.arrCU_final_target[i]
 
             # 第一个 enable 的 CU（也就是初始化 new_arr）
@@ -284,7 +287,7 @@ class CodingUnitClassifier(object):
             else:
                 self.arrCU_is_enable[current_index] = True
                 self.arrCU_final_target[current_index] = cur_target
-                if self.N_train == 2 and self.is_draw_2D:
+                if self.D_train == 2 and self.is_draw_2D:
                     self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
             current_index += 1
@@ -358,7 +361,7 @@ class CodingUnitClassifier(object):
             # 遍历所有 CU，当前感染者I 要去感染CU（被感染者 S）的 index
             arr_index_S = np.array(index_I)
             sum_point = self.arrCU_num_point[index_I]  # 所有被感染者CU中的粒子数量
-            sum_V = (self.arrCU_dL[index_I] ** self.N_train)  # 所有被感染者CU中的体积
+            sum_V = (self.arrCU_dL[index_I] ** self.D_train)  # 所有被感染者CU中的体积
             for i in range(self.arrCU_start_points.shape[0]):
                 # 当前 CU 已经是别的target，并且不是空白 CU
                 if (self.arrCU_final_target[i] != target_I) and (self.arrCU_final_target[i] != self.CUType.EMPTY_CU.value):
@@ -371,8 +374,8 @@ class CodingUnitClassifier(object):
                 end_point_S = np.array(start_point_S + self.arrCU_dL[i])
 
                 # 判断每一维度（数列-D 表示特征）的投影是否都相交
-                same_d_count = 0  # 如果某个维度上相等（same_d_count = self.N_train），则 +1，如果每个维度上的投影都相交，则说明两个 CU 重叠
-                for d in range(self.N_train):
+                same_d_count = 0  # 如果某个维度上相等（same_d_count = self.D_train），则 +1，如果每个维度上的投影都相交，则说明两个 CU 重叠
+                for d in range(self.D_train):
                     if self.is_overlapping(point_1_start=start_point_I[d], point_1_end=end_point_I[d],
                                            point_2_start=start_point_S[d], point_2_end=end_point_S[d]):
                         same_d_count += 1
@@ -380,13 +383,13 @@ class CodingUnitClassifier(object):
                         break
 
                 # 如果 I 与 S 不相邻，直接进行下一次迭代
-                if same_d_count != self.N_train:
+                if same_d_count != self.D_train:
                     continue
 
                 # 记录被感染者 S 的下标
                 arr_index_S = np.append(arr_index_S, i)
                 sum_point += self.arrCU_num_point[i]
-                sum_V += (self.arrCU_dL[i] ** self.N_train)
+                sum_V += (self.arrCU_dL[i] ** self.D_train)
 
             # 【感染】如果相邻，则进行感染，并且重置他们的感染力度和单元类别 >>>>>>>>>>>>>>>>>
             print(f'[INFO] CU_{index_I} 将感染 {arr_index_S}, {arr_index_S.shape}')
@@ -398,7 +401,7 @@ class CodingUnitClassifier(object):
                 self.arrCU_force_infection[i] = new_fi
                 self.arrCU_final_target[i] = target_I
             # <<<<<<<<<<<<<<<<<< 感染结束
-            if self.is_draw_2D and (2 == self.N_train):
+            if self.is_draw_2D and (2 == self.D_train):
                 self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
     def draw_2d(self, color_map, pic_save_path=None) -> None:
@@ -413,8 +416,8 @@ class CodingUnitClassifier(object):
         #     return
 
         color_map = np.array(color_map)
-        if color_map.shape[0] != self.N_train:
-            raise ValueError('\n[CUC-ERROR] color_map.shape[0] != self.N_train')
+        if color_map.shape[0] != self.D_train:
+            raise ValueError('\n[CUC-ERROR] color_map.shape[0] != self.D_train')
 
         plt.figure(figsize=(5, 5))
 
@@ -467,7 +470,7 @@ class CodingUnitClassifier(object):
             raise ValueError(f'[CUC-ERROR] X.shape != y.shape: X.shape is {X.shape[0]}, y.shape is {y.shape[0]}')
 
         # =================================== 初始化 CUC 配置参数 ===================================
-        self.N_train = X.shape[1]
+        self.D_train = X.shape[1]
         self.X_train = np.array(X)
         self.y_train = np.array(y)
         self.df_train = pd.concat([pd.DataFrame(self.X_train), pd.Series((self.y_train), name='target')], axis=1)
@@ -480,7 +483,7 @@ class CodingUnitClassifier(object):
         self.y_train = np.array(self.transfer_LabelEncoder.fit_transform(y=y), dtype=np.int)
 
         # 初始化 CU 相关 ndarray
-        self.arrCU_start_points = np.full(shape=(1, self.N_train), fill_value=self.CU_min)  # 将初始化中的 0.0 替换为编码单元的起始点
+        self.arrCU_start_points = np.full(shape=(1, self.D_train), fill_value=self.CU_min)  # 将初始化中的 0.0 替换为编码单元的起始点
         self.arrCU_dL = np.array([self.CU_max - self.CU_min])
         self.arrCU_is_enable = np.array([True])
         self.arrCU_final_target = np.array([self.CUType.NOT_FINAL_CU.value], dtype=np.int)
@@ -506,7 +509,7 @@ class CodingUnitClassifier(object):
         # ========================================= 细化分割 =========================================
         self.refinement_split(num=self.num_refinement_splits)
         self.remove_disable_points()
-        if self.N_train == 2 and self.is_draw_2D:
+        if self.D_train == 2 and self.is_draw_2D:
             self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
         print('\n>>>>>>>>>>>>>>>> 完成细化分割后的arr结果')
@@ -522,17 +525,51 @@ class CodingUnitClassifier(object):
         self.infection()
 
     def predict(self, X: np.ndarray) -> list:
-        if X.shape[1] != self.N_train:
-            raise ValueError(f'[CUC-ERROR] In method predict: X.shape != self.N_train: X.shape is {X.shape[1]}, y.shape is {self.N_train}')
+        if X.shape[1] != self.D_train:
+            raise ValueError(f'[CUC-ERROR] In method predict: X.shape != self.D_train: X.shape is {X.shape[1]}, y.shape is {self.D_train}')
 
+        # 根据 point 对应的编码单元预测结果
         res_predict = []
         for x in X:
+            cur_len = len(res_predict)
             for i in range(self.arrCU_start_points.shape[0]):
-                if self.predict_is_point_in_CU(x=x, start_point=self.arrCU_start_points[i], dL=self.arrCU_dL[i]):
-                    res_predict.append(self.transfer_LabelEncoder.classes_[self.arrCU_final_target[i]])
+                if self.predict_is_point_in_CU(point=x, start_point=self.arrCU_start_points[i], dL=self.arrCU_dL[i]):
+                    res_predict.append(self.arrCU_final_target[i])
                     break
 
-        return res_predict
+            if cur_len == len(res_predict):  # 有的点可能不落在任意一 CU 里，给他一个随机值
+                res_predict.append(np.random.randint(low=0,
+                                                     high=self.transfer_LabelEncoder.classes_.shape[0]))
+
+        return self.transfer_LabelEncoder.inverse_transform(y=res_predict)
 
     def score(self, X: np.ndarray, y: np.ndarray) -> float:
-        pass
+        if X.shape[1] != self.D_train:
+            raise ValueError(f'[CUC-ERROR] In method predict: X.shape != self.D_train: X.shape is {X.shape[1]}, y.shape is {self.D_train}')
+
+        # 根据 point 对应的编码单元预测结果
+        res_predict = []
+        for x in X:
+            cur_len = len(res_predict)
+            for i in range(self.arrCU_start_points.shape[0]):
+                if self.predict_is_point_in_CU(point=x, start_point=self.arrCU_start_points[i], dL=self.arrCU_dL[i]):
+                    res_predict.append(self.arrCU_final_target[i])
+                    break
+
+            if cur_len == len(res_predict):  # 有的点可能不落在任意一 CU 里，给他一个随机值
+                res_predict.append(np.random.randint(low=0,
+                                                     high=self.transfer_LabelEncoder.classes_.shape[0]))
+
+        # 将 y 转换为数字类型，因为 y 可能是字符串或者其他类型，对这些值检测可能会很慢或出现故障
+        series_y = pd.Series(self.transfer_LabelEncoder.transform(y))
+        if len(res_predict) != series_y.shape[0]:
+            raise ValueError(
+                f'[CUC-ERROR] Shape res_predict shape != y.shape:'
+                f' res_predict shape is {len(res_predict)}, y.shape is {series_y.shape[0]}')
+
+        # 拼接预测试和真实值，以便于后期处理
+        df_res = pd.concat([pd.Series(res_predict), series_y], axis=1)
+        df_res.columns = ('predict', 'target')
+
+        correct_num = df_res.query('predict == target').count()[0]  # 预测正确的结果数量
+        return correct_num / series_y.shape[0]  # 计算正确率并返回
