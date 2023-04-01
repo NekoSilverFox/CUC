@@ -9,11 +9,23 @@
 import pandas as pd
 
 from CodingUnitClassifier import *
+import time
 import warnings
+import sys
+import os
 
 warnings.filterwarnings('ignore')
 
 RANDOM_STATE = 90102
+
+# Disable
+def blockPrint():
+    sys.stdout = open(os.devnull, 'w')
+
+
+# Restore
+def enablePrint():
+    sys.stdout = sys.__stdout__
 
 
 def test_data_1():
@@ -68,7 +80,7 @@ def test_data_e():
     data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_e.txt', sep='\t')
     data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_e_test.txt', sep='\t')
     data = pd.concat([data_train, data_test], axis=0)
-    data = shuffle(data).reset_index(drop=True)
+    # data = shuffle(data).reset_index(drop=True)
     return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
 
 
@@ -109,8 +121,8 @@ def dataset_nesting():
 
 if __name__ == '__main__':
     # 划分数据集
-    x_train, x_test, y_train, y_test = test_data_e()
-    # x_train, x_test, y_train, y_test = dataset_fourclass()
+    # x_train, x_test, y_train, y_test = test_data_e()
+    x_train, x_test, y_train, y_test = dataset_fourclass()
 
 
     # 归一化
@@ -118,10 +130,20 @@ if __name__ == '__main__':
     x_train = transfer.fit_transform(X=x_train)
     x_test = transfer.transform(X=x_test)
 
-    estimator = CodingUnitClassifier(num_refinement_splits=2, threshold_value=0.98,
+    # blockPrint()  # 禁用 print 输出
+    start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
+    estimator = CodingUnitClassifier(num_refinement_splits=1, threshold_value=0.50,
                                      is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
     estimator.fit(X=x_train, y=y_train)
+    end_time = time.time()   # <<<<<<<<<<<<<<<<< 结束时间
+    enablePrint()
+
     estimator.draw_2d(color_map=('blue', 'red'), pic_save_path='./output/CUC-fourclass')
 
+    arr_predict = estimator.predict(X=x_test)
+    # print(f'预测结果：\n{arr_predict}, {len(arr_predict)}')
+    # print(f'正确结果：\n{y_test}, {y_test.shape[0]}')
+    print(f'正确率 score:\n{estimator.score(X=x_test, y=y_test)}')
+    print(f'Estimator 预估器耗时：{end_time - start_time}s')
 
     pass
