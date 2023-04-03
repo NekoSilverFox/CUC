@@ -11,12 +11,8 @@ import random
 import numpy as np
 import pandas as pd
 from enum import Enum
-from sklearn.utils import shuffle
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
 
 
 class CodingUnitClassifier(object):
@@ -40,7 +36,11 @@ class CodingUnitClassifier(object):
 
         self.split_count = 0  # 分割次数计数器
         self.num_refinement_splits = num_refinement_splits
-        self.threshold_value = threshold_value  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
+
+        if threshold_value > 1.0:
+            self.threshold_value = 1.0  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
+        else:
+            self.threshold_value = threshold_value
 
         self.transfer_LabelEncoder = None  # 目标值的转换器（转为数字）
 
@@ -344,7 +344,7 @@ class CodingUnitClassifier(object):
             index_I = None  # 当前的感染者是感染力度最大的，这里获取他的下标
             tmp_fi_max = -1.0
             for i in range(self.arrCU_is_enable.shape[0]):
-                if self.arrCU_is_been_I[i] or self.arrCU_force_infection[i] <= tmp_fi_max:
+                if self.arrCU_is_been_I[i] or self.arrCU_force_infection[i] < tmp_fi_max:
                     continue
                 index_I = i
                 tmp_fi_max = self.arrCU_force_infection[i]
@@ -404,7 +404,7 @@ class CodingUnitClassifier(object):
             if self.is_draw_2D and (2 == self.D_train):
                 self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
-    def draw_2d(self, color_map, pic_save_path=None) -> None:
+    def draw_2d(self, color_map, pic_save_path=None, title='') -> None:
         """
         绘制 2D 图形
         :param color_map:
@@ -444,7 +444,10 @@ class CodingUnitClassifier(object):
                 plt.fill(t_x_block, t_y_block, c='grey', alpha=0.2)
             else:
                 plt.fill(t_x_block, t_y_block, c=color_map[target], alpha=0.2)
-            plt.title(f'Splitting process in CUC\n(splits count {self.split_count})')
+
+            # if title == '':
+            plt.title(title)
+            # else:
             plt.ylabel('y')
             plt.xlabel('x')
             plt.axis('equal')  # x、y 单位长度等长

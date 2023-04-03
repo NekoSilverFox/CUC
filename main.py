@@ -6,9 +6,15 @@
 # @Software: PyCharm
 # @Github  ：https://github.com/NekoSilverFox
 # -----------------------------------------
+import numpy as np
+import matplotlib.pyplot as plt
 import pandas as pd
 
-from CodingUnitClassifier import *
+from CodingUnitClassifier import CodingUnitClassifier
+from sklearn.utils import shuffle
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+
 import time
 import warnings
 import sys
@@ -130,20 +136,39 @@ if __name__ == '__main__':
     x_train = transfer.fit_transform(X=x_train)
     x_test = transfer.transform(X=x_test)
 
-    # blockPrint()  # 禁用 print 输出
-    start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
-    estimator = CodingUnitClassifier(num_refinement_splits=1, threshold_value=0.50,
-                                     is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
-    estimator.fit(X=x_train, y=y_train)
-    end_time = time.time()   # <<<<<<<<<<<<<<<<< 结束时间
-    enablePrint()
+    arr_score = []
+    arr_time = []
 
-    estimator.draw_2d(color_map=('blue', 'red'), pic_save_path='./output/CUC-fourclass')
+    for cre in range(4, 5):
+        print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+        for t in np.arange(start=0.81, stop=1.0, step=0.01):
+            blockPrint()  # 禁用 print 输出
+            start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
+            estimator = CodingUnitClassifier(num_refinement_splits=cre, threshold_value=t,
+                                             is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
+            estimator.fit(X=x_train, y=y_train)
+            end_time = time.time()   # <<<<<<<<<<<<<<<<< 结束时间
+            enablePrint()
 
-    arr_predict = estimator.predict(X=x_test)
-    # print(f'预测结果：\n{arr_predict}, {len(arr_predict)}')
-    # print(f'正确结果：\n{y_test}, {y_test.shape[0]}')
-    print(f'正确率 score:\n{estimator.score(X=x_test, y=y_test)}')
-    print(f'Estimator 预估器耗时：{end_time - start_time}s')
+            arr_predict = estimator.predict(X=x_test)
+            print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre},  t: {t}')
+            score = estimator.score(X=x_test, y=y_test)
+            arr_score.append(score)
+            print(f'正确率 score: {score}')
 
-    pass
+            time_use = end_time - start_time
+            print(f'Estimator 预估器耗时：{time_use}s\n')
+            arr_time.append(time_use)
+
+            print(f'arr_score\n{arr_score}')
+            print(f'arr_time\n{arr_time}')
+
+
+            print('\n开始绘制')
+            start_time = time.time()
+            estimator.draw_2d(color_map=('blue', 'red'), pic_save_path=f'./output/CUC-Cre-{cre}-t-{format(t, ".2f")}',
+                              title=f'Estimator CUC\n(Cre: {cre},  t: {t}')
+            end_time = time.time()
+            print(f'结束绘制，用时：{end_time - start_time}s')
+
+            del estimator
