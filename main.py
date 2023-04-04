@@ -98,6 +98,7 @@ def dataset_fourclass():
     plt.figure(figsize=(5, 5))
     plt.scatter(x=data_1.iloc[:, 0], y=data_1.iloc[:, 1], s=5, c='blue')
     plt.scatter(x=data_2.iloc[:, 0], y=data_2.iloc[:, 1], s=5, c='red')
+    plt.savefig('./output/dataset-fourclass.png')
     plt.show()
 
     return train_test_split(data.values[:, :-1], data.values[:, -1], random_state=RANDOM_STATE)
@@ -139,36 +140,39 @@ if __name__ == '__main__':
     arr_score = []
     arr_time = []
 
-    for cre in range(4, 5):
-        print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-        for t in np.arange(start=0.81, stop=1.0, step=0.01):
-            blockPrint()  # 禁用 print 输出
-            start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
-            estimator = CodingUnitClassifier(num_refinement_splits=cre, threshold_value=t,
-                                             is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
-            estimator.fit(X=x_train, y=y_train)
-            end_time = time.time()   # <<<<<<<<<<<<<<<<< 结束时间
-            enablePrint()
+    cre = 1
+    t = 0.80
 
-            arr_predict = estimator.predict(X=x_test)
-            print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre},  t: {t}')
-            score = estimator.score(X=x_test, y=y_test)
-            arr_score.append(score)
-            print(f'正确率 score: {score}')
+    # for cre in range(4, 5):
+    #     print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+    #     for t in np.arange(start=0.81, stop=1.0, step=0.01):
+    # blockPrint()  # 禁用 print 输出
+    start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
+    estimator = CodingUnitClassifier(num_refinement_splits=cre, threshold_value=t,
+                                     is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
+    estimator.fit(X=x_train, y=y_train)
+    end_time = time.time()   # <<<<<<<<<<<<<<<<< 结束时间
+    enablePrint()
 
-            time_use = end_time - start_time
-            print(f'Estimator 预估器耗时：{time_use}s\n')
-            arr_time.append(time_use)
+    arr_predict = estimator.predict(X=x_test)
+    print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre},  t: {t}')
+    score = estimator.score(X=x_test, y=y_test)
+    arr_score.append(score)
+    print(f'正确率 score: {score}')
 
-            print(f'arr_score\n{arr_score}')
-            print(f'arr_time\n{arr_time}')
+    time_use = end_time - start_time
+    print(f'Estimator 预估器耗时：{time_use}s\n')
+    arr_time.append(time_use)
+
+    print(f'arr_score\n{arr_score}')
+    print(f'arr_time\n{arr_time}')
 
 
-            print('\n开始绘制')
-            start_time = time.time()
-            estimator.draw_2d(color_map=('blue', 'red'), pic_save_path=f'./output/CUC-Cre-{cre}-t-{format(t, ".2f")}',
-                              title=f'Estimator CUC\n(Cre: {cre},  t: {t}')
-            end_time = time.time()
-            print(f'结束绘制，用时：{end_time - start_time}s')
+    print('\n开始绘制')
+    start_time = time.time()
+    estimator.draw_2d(color_map=('blue', 'red'), pic_save_path=f'./output/CUC-Cre-{cre}-t-{format(t, ".2f")}',
+                      title=f'Estimator CUC\n(Cre: {cre},  t: {format(t, ".2f")}')
+    end_time = time.time()
+    print(f'结束绘制，用时：{end_time - start_time}s')
 
-            del estimator
+    del estimator
