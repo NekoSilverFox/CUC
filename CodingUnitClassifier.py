@@ -7,16 +7,12 @@
 # @Github  ：https://github.com/NekoSilverFox
 # -----------------------------------------
 import random
-
+import copy
 import numpy as np
 import pandas as pd
 from enum import Enum
-from sklearn.utils import shuffle
 from matplotlib import pyplot as plt
 from sklearn.preprocessing import LabelEncoder
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.model_selection import train_test_split
 
 
 class CodingUnitClassifier(object):
@@ -40,11 +36,19 @@ class CodingUnitClassifier(object):
 
         self.split_count = 0  # 分割次数计数器
         self.num_refinement_splits = num_refinement_splits
-        self.threshold_value = threshold_value  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
+
+        if threshold_value > 1.0:
+            self.threshold_value = 1.0  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
+        else:
+            self.threshold_value = threshold_value
 
         self.transfer_LabelEncoder = None  # 目标值的转换器（转为数字）
 
         self.D_train = None  # 训练集的维度数量: int
+        self.X_TRAIN = None  # 不会做任何改变的特征值（训练集）
+        self.Y_TRAIN = None  # 不会做任何改变的目标值（训练集）
+        self.arr_abnormal = None  # 异常值列表
+
         self.X_train = None  # 特征值（训练集）
         self.y_train = None  # 目标值（训练集）
         self.df_train = None  # 以 pandas.DataFream 形式的训练接数据（特征值和训练集是合并在一起的）。目标值的索引为 `target`，特征值的索引为 `x`，x 为从 0 开始的数字
@@ -128,12 +132,14 @@ class CodingUnitClassifier(object):
                 f'should be ({self.D_train}, )')
 
         s_type_count = pd.Series(index=np.unique(self.y_train)).fillna(value=0)  # 计数器，列索引为类别，对应位置数据为该 CU 中此种类粒子数量
+        arr_index_point_and_target = []  # 记录在当前编码单元的样本点的下标和类别
 
         # 遍历判断点是否在这个 CU  中
-        for col, col_target in zip(self.X_train, self.y_train):  # col_target 为当前行的目标值
+        for i in range(self.X_train.shape[0]):
             # 判断粒子在此维度上是否介于 CU 的起始点和结束点
-            if self.is_point_in_CU(point=col, start_point=arr1d_start_points, dL=dL):
-                s_type_count[col_target] += 1
+            if self.is_point_in_CU(point=self.X_train[i], start_point=arr1d_start_points, dL=dL):
+                arr_index_point_and_target.append([i, self.y_train[i]])
+                s_type_count[self.y_train[i]] += 1
 
         # -1 代表这个编码单元里没有任何粒子，为空白编码单元
         if 0 == s_type_count.sum():
@@ -143,7 +149,19 @@ class CodingUnitClassifier(object):
         s_type_count = s_type_count / s_type_count.sum()  # 转换为概率
         if (s_type_count.max() >= self.threshold_value) and \
                 (1 == s_type_count[s_type_count.values == s_type_count.max()].shape[0]):  # 不允许出现两种相同概率
-            return s_type_count[s_type_count.values == s_type_count.max()].index[0]
+            res_target = s_type_count[s_type_count.values == s_type_count.max()].index[0]  # 该 CU 最终的目标值
+
+            # 如果此单元中没有异常点
+            if 1.0 == s_type_count.max():
+                return res_target
+            # 从原数据集中移除异常点（与该 CU 目标值不一样的点）
+            arr_index_point_and_target.reverse()  # 反转一下，让他从后往前删，不然删除过程中的下标变化会造成错误
+            for i in arr_index_point_and_target:
+                if i[1] != res_target:
+                    # print(f'移除 {i}')
+                    self.X_train = np.delete(self.X_train, i[0], axis=0)
+                    self.y_train = np.delete(self.y_train, i[0], axis=0)
+            return res_target
         else:
             return self.CUType.NOT_FINAL_CU.value
 
@@ -404,7 +422,7 @@ class CodingUnitClassifier(object):
             if self.is_draw_2D and (2 == self.D_train):
                 self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
-    def draw_2d(self, color_map, pic_save_path=None) -> None:
+    def draw_2d(self, color_map, pic_save_path=None, title='') -> None:
         """
         绘制 2D 图形
         :param color_map:
@@ -422,12 +440,14 @@ class CodingUnitClassifier(object):
         plt.figure(figsize=(5, 5))
 
         # 绘制点
-        tmp_data = pd.concat([pd.DataFrame(self.X_train), pd.Series(self.y_train)], axis=1)
+        tmp_data = pd.concat([pd.DataFrame(self.X_TRAIN), pd.Series(self.Y_TRAIN)], axis=1)
         tmp_data.columns = ('x', 'y', 'target')
-        for target in np.unique(self.y_train):
+        for target in np.unique(self.Y_TRAIN):
             plt.scatter(tmp_data[tmp_data['target'] == target].values[:, 0],
-                        tmp_data[tmp_data['target'] == target].values[:, 1], c=color_map[target], s=5)
+                        tmp_data[tmp_data['target'] == target].values[:, 1],
+                        c=color_map[target], s=5)
 
+        # 绘制编码单元区块
         for i in range(self.arrCU_start_points.shape[0]):
             target = self.arrCU_final_target[i]
             # 如果当前 CU 不是最终的，或者是 disable 的，那么没有绘制的必要
@@ -444,7 +464,8 @@ class CodingUnitClassifier(object):
                 plt.fill(t_x_block, t_y_block, c='grey', alpha=0.2)
             else:
                 plt.fill(t_x_block, t_y_block, c=color_map[target], alpha=0.2)
-            plt.title(f'Splitting process in CUC\n(splits count {self.split_count})')
+
+            plt.title(title)
             plt.ylabel('y')
             plt.xlabel('x')
             plt.axis('equal')  # x、y 单位长度等长
@@ -471,6 +492,7 @@ class CodingUnitClassifier(object):
 
         # =================================== 初始化 CUC 配置参数 ===================================
         self.D_train = X.shape[1]
+        self.X_TRAIN = copy.deepcopy(X)
         self.X_train = np.array(X)
         self.y_train = np.array(y)
         self.df_train = pd.concat([pd.DataFrame(self.X_train), pd.Series((self.y_train), name='target')], axis=1)
@@ -481,6 +503,7 @@ class CodingUnitClassifier(object):
         # 目标值转为数值类型
         self.transfer_LabelEncoder = LabelEncoder()
         self.y_train = np.array(self.transfer_LabelEncoder.fit_transform(y=y), dtype=np.int)
+        self.Y_TRAIN = np.array(self.transfer_LabelEncoder.fit_transform(y=y), dtype=np.int)
 
         # 初始化 CU 相关 ndarray
         self.arrCU_start_points = np.full(shape=(1, self.D_train), fill_value=self.CU_min)  # 将初始化中的 0.0 替换为编码单元的起始点
