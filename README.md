@@ -57,7 +57,7 @@
 
 借助于编码树中编码单元的思想，我们开发了编码单元分类分类器（Coding unit classifier， CUC），此外我们还提出了一种方法，用于减少数据集中异常值对分类器性能的影响。
 
-在本项工作中，使用了以下库numpy、pandas、Matplotlib 和 scikit-learn，开发语言为Python 3.9，并使用PyCharm和Visual Studio Code作为开发和测试环境。
+在本项工作中，使用了以下库和工具 drawio, git, numpy、pandas、Matplotlib 和 scikit-learn，开发语言为Python 3.9，并使用PyCharm和Visual Studio Code作为开发和测试环境。
 
 
 
@@ -231,7 +231,7 @@ $$
 
 ## 构建编码单元
 
-在本章节，我们将介绍构建编码单元的方法。构建最终的编码单元主要涉及两个阶段：“分割”和“感染”，其中“分割”又分为“预分割”和“细化分割”。
+在本章节，我们将介绍构建编码单元的方法。构建最终的编码单元主要涉及两个阶段：“分割”和“感染”，其中“分割”阶段又分为“预分割”和“细化分割”。
 
 ![构建编码单元的阶段](doc/pic/构建编码单元的阶段.png)
 
@@ -241,11 +241,11 @@ $$
 
 <img src="doc/pic/编码单元分割示例.png" alt="编码单元分割示例" style="zoom:50%;" />
 
-而在下图中，展示了一个被均匀分割（即对后续产生的小编码单元也再进行分割）了 3 次的编码单元。
+而在下图中，展示了一个被均匀分割了 3 次的编码单元。均匀分割 - 即对后续产生的小编码单元也再进行分割。
 
 <img src="doc/pic/均匀分割示例.png" alt="均匀分割示例" style="zoom:50%;" />
 
-可以看出，在分割的过程中，单个编码单元的容积$V$和其中包含的粒子数量逐渐减少，其效果类似于一个不断递归的正方形。
+可以看出，在分割的过程中，单个编码单元的容积 $V$ 和其中包含的粒子数量逐渐减少（如果包含了粒子），其效果类似于一个不断递归的正方形。
 
 在分割过程中：
 
@@ -265,9 +265,24 @@ $$
      k=0\ or\ 1\ \ or\ ...\ or\ 2_{n}-1
     $$
 
-为了确定在 $D$ 维空间下编码单元 $CU$ 在经过一次分割后，产生的所有新编码单元顶点在空间中的位置，我们可以构建一个“二进制数值表”（Binary Value Table 或 Bit table），其大小为 $[{2^D},\ D]$，其中每一行对应一个 $D$ 位二进制数，其取值范围为 ${[0, 2^{D-1}]}$。然后将其每个维度 $D_{i}$ 上的新 $P_{i,\ start}$ 和 $P_{i,\ end}$ 映射（map）到对应的二进制位上。下图中展示了其构建过程和方法。
+为了确定在 $D$ 维空间下编码单元 $CU$ 在经过一次分割后，产生的所有新编码单元顶点在空间中的位置，我们可以构建一个“二进制数值表”（Binary Value Table 或 Bit table），其大小为 $[{2^D},\ D]$，其中每一行对应一个 $D$ 位二进制数，其取值范围为 ${[0, 2^{D-1}]}$。然后将其每个维度 $D_{i}$ 上的新 $P_{i,\ start}$ 和 $P_{i,\ end}$ 映射（map）到对应的二进制位上。下图和算法 1 中展示了其构建过程和方法。
 
 ![二进制数值表](doc/pic/二进制数值表.png)
+
+```
+INPUT: D, 当前 CU 的起始点和 DL
+
+{\Delta L}^{\prime} = \Delta L /{2}
+
+计算每个维度（D_i）下的新起始点和结束点：
+	P_{i, start} = P_{i, start}
+	P_{i, end} = P_{i, start} + {\Delta L}^{\prime}
+
+构建大小为 [{2^D},\ D] 的二进制表
+将每个维度（D_i）下的新起始点和结束点映射到二进制表
+```
+
+
 
 #### 预分割
 
@@ -275,7 +290,7 @@ $$
 >
 > 避免分类器过多的强调了训练集的准 确率甚至于对一些错误/异常的数据也进行了学习，而正确的数据却无法覆盖整个特征空间。为此，这样得到的分类器 在对新数据进行预测时将会出现错误。这种现象称之为过拟合，同时也是维灾难的直接体现。
 
-本阶段将介绍编码单元的预分割原则。
+本阶段将介绍编码单元的预分割原则和方法。
 
 在开始时，数据集中的所有样本点都包含在一个大的编码单元中。在“预分割”阶段，需要将初始的编码单元分割为更小的单元，直到满足其中一个条件：
 
@@ -304,12 +319,12 @@ $$
     $$
     
 
-预分割的主要步骤如算法1所示：
+预分割的主要步骤如算法2所示：
 
 ```pascal
 INPUT: 初始编码单元的 $P_{start}$, $\Delta L$
 
-FOR 所有没有目标值$y_{CU_{i}}$ 的 $CU_{i}$
+FOR 所有没有最终目标值$y_{CU_{i}}$ 的 $CU_{i}$
  	IF(当前编码单元中不存在任何样本点):
  		$y_{CU_{i}} = CU_{EMPTY}$
  		BREAK
@@ -337,15 +352,16 @@ FOR 所有没有目标值$y_{CU_{i}}$ 的 $CU_{i}$
 
     <img src="doc/pic/细化分割示例.png" alt="细化分割示例" style="zoom:50%;" />
 
-细化分割的主要步骤如算法2所示：
+细化分割的主要步骤如算法3所示：
 
 ```
-INPUT: 预分割结束后产生的所有 CU
+INPUT: 预分割结束后产生的所有 CU 的起始点和边长, C_{re}
+OUTPUT: 最终的编码单元
 
-对预分割结束后产生的所有 CU在进行 $C_{re}$ 次均匀分割
+对预分割结束后产生的所有 CU 再进行 $C_{re}$ 次均匀分割
 
 FOR every new CU:
-	IF (这个 CU 中没有样本):
+	IF (这个 CU 中没有样本点):
 		$y_{CU_{i}} = CU_{EMPTY}$
 ```
 
@@ -383,7 +399,7 @@ CUC 中的超参数：
 
     ![分割示例-编码单元3](doc/pic/分割示例-编码单元3.png)
 
-    并且此时每个编码单元都满足 $p_{i} \geq t$ 或者不包含任何粒子，预分割阶段结束。
+    并且此时每个编码单元都满足 $p_{i} \geq t$ 或者不包含任何样本点，预分割阶段结束。
 
 
 
@@ -393,7 +409,7 @@ CUC 中的超参数：
 
     ![细化分割-示例](doc/pic/细化分割-示例.png)
 
-6. 最终，我们将新产生的空白编码单元的目标值被重新标记为 $CU_{EMPTY}$。
+6. 最终，我们将新产生的空白编码单元的目标值重新标记为 $CU_{EMPTY}$。
 
     ![重新标记空白单元](doc/pic/重新标记空白单元.png)
 
@@ -409,7 +425,7 @@ CUC 中的超参数：
 
 在本阶段，将介绍感染的原理和方法。
 
-该阶段的原理是根据病毒传播学和流行病学[^gr-1]中的 SIR 模型[^gr-2]（S，I，R 分别代表易感者、感染者和康复者的数量）。当族群中存在某种可传播性病毒时，该病毒在某族群中传染的力度 $ρ$ 由该族群中感染者的数量 $N_{I}^{SIR}$ 和区域的面积 $A$ 共同决定。
+该阶段的原理是根据病毒传播学和流行病学[^gr-1]中的 SIR 模型[^gr-2]（S，I，R 分别代表易感者、感染者和康复者的数量）。当族群中存在某种可传播性病毒时，该病毒在某族群中传染的力度 $ρ$ (infectivity) 由该族群中感染者的数量 $N_{I}^{SIR}$ 和区域的面积 $A$ 共同决定。
 $$
 ρ = \frac{N_{I}^{SIR}}{A}
 $$
@@ -417,7 +433,7 @@ $$
 $$
 ρ = \frac{N_{I}^{SIR}}{\Delta L /{2^{n}}}=\frac{N_{I}^{SIR}}{V}
 $$
-由公式可知，如果某个编码单元的传染力度 $ρ$ 为 0，则说明其内部没有任何粒子存在（即空白编码单元），如上面图片中编号为 1、6、8、13 等单元。感染的目的就是将这些空白编码单元标记为数据集中目标值的某一种。
+由公式可知，如果某个编码单元的传染力度 $ρ$ 为 0，则说明其内部没有任何样本点存在（即空白编码单元），如上面图片中编号为 1、6、8、13 等单元。感染的目的就是将这些空白编码单元标记为数据集中目标值的某一种。
 
 在计算出所有编码单元的传染力度 $ρ$ 后，感染阶段开始。
 
@@ -437,18 +453,18 @@ $$
 
 
 
-感染阶段的主要步骤如算法3所示：
+感染阶段的主要步骤如算法4所示：
 
 ```
-INPUT: 分割阶段后的所有 CU
+INPUT: 分割阶段后的所有 CU的起始点
 
 WHILE (仍有未被感染的CU):
 	感染者 = 拥有最大感染力度且没有感染过其他编码单元的编码单元
 	感染者感染其临近的编码单元：
 		IF (相邻的编码单元为空白编码单元):
-			则将其感染为相同目标值，并标记为并感染者
+			则将其感染为相同目标值，并标记为被感染者
     ELSE IF (相邻的编码单元具有相同目标值):
-    	标记为并感染者
+    	标记为被感染者
     ELSE IF (相邻的编码单元具有不同目标值):
     	不进行感染
     
@@ -477,11 +493,11 @@ WHILE (仍有未被感染的CU):
 
 ## 预测
 
-对于一个输入CUC分类器中的新样本点，我们可以根据它所属编码单元的种类进行预测。比如在下图中展示了两个新粒子 $x_{new1}$ 和 $x_{new2}$，他们将会分别被预测为红色和蓝色。
+对于一个输入CUC分类器中的新样本点 $x$，我们可以根据它所属编码单元的种类进行预测。比如在下图中展示了两个新粒子 $x_{new1}$ 和 $x_{new2}$，他们将会分别被预测为红色和蓝色。
 
 ![预测](doc/pic/预测.png)
 
-预测阶段的主要步骤如算法4所示：
+预测阶段的主要步骤如算法5所示：
 
 ```
 INPUT: 新的样本点
@@ -512,12 +528,12 @@ FOR CU_i 所有 CU 中:
 
 为了测试 CUC 分类器两个超参数 $C_{re}$ 和 $t$ 对性能的影响，他们的取值如下：
 
-| 超参数   | 取值                     |
-| -------- | ------------------------ |
-| $C_{re}$ | 0 到 4，间隔为 1         |
-| $t$      | 0.7 到 1.0，间隔为 0.025 |
+| 超参数   | 取值                    |
+| -------- | ----------------------- |
+| $C_{re}$ | 0 到 4，间隔为 1        |
+| $t$      | 0.7 到 1.0，间隔为 0.01 |
 
-试验所使用的设备配备了 macOS13 64位操作系统，Apple M1 Pro 8 核心CPU，以及统一内存架构的16GB内存。
+试验所使用的计算机配备了 macOS13 64位操作系统，Apple M1 Pro 8 核心CPU，以及统一内存架构的16GB内存。
 
 
 
@@ -525,11 +541,11 @@ FOR CU_i 所有 CU 中:
 
 ### fourclass
 
-fourclass 数据集拥有862个样本点，其中包括两个特征值和两种目标值。在样本点分布上，它具有部分嵌套结构。fourclass数据集常备用作测试 SVM[^t-1]和神经网络[^t-2]。它样本点的分布如下图所示。
+fourclass 数据集拥有862个样本点，其中包括两种特征值和两种目标值。在样本点分布上，它具有部分嵌套结构。fourclass数据集常备用作测试 SVM[^t-1]和神经网络[^t-2]。它样本点的分布如图22所示。
 
 <img src="doc/pic/dataset-fourclass.png" alt="dataset-fourclass" style="zoom:50%;" />
 
-$C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表-1 和图-1中所示；训练模型所用的时间，其结果在表-2和图-2 中所示。
+在 forclasd 数据集上的实验结果如表-4 所示。超参数 $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如图-1所示；对训练模型所用的时间的影响，其结果如图-2 中所示。
 
 ![res-score-fourclass](doc/pic/res-score-fourclass.png)
 
@@ -617,15 +633,15 @@ Checkerboard 是一种二维 4×4 数据集，常用于大规模评估。在本�
 
 $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表-1 和图-1中所示；训练模型所用的时间，其结果在表-2和图-2 中所示。
 
+![res-score-Checkerboard](doc/pic/res-score-Checkerboard.png)
 
+![res-time-Checkerboard](doc/pic/res-time-Checkerboard.png)
 
-当 $t = 0.99$ ，$C_{re}$ 取不同值时，CUC 估计器的构造如图-16 所示。
+当 $t = 0.85$ ，$C_{re}=0$ 时，CUC 估计器的构造如图-16 所示。
 
+<img src="doc/pic/CUC-Cre-0-t-0.85-1.png" alt="CUC-Cre-0-t-0.85-1" style="zoom:67%;" />
 
-
-
-
-通过所得到的结果我们可以看到，对于样本点不具有复杂嵌套结构的数据集，CUC 分类器能够进行非常高效的分类。但由于数据集中噪声的存在，预分割阈值和细化分割的次数不应过高，否则会造成过拟合和模型训练时长过长。
+通过所得到的结果我们可以看到，对于样本点不具有复杂嵌套结构的数据集，CUC 分类器能够识别且过滤噪声，并进行非常高效的分类。但由于数据集中噪声的存在，预分割阈值 $t$ 和细化分割 $C_{re}$ 的次数不应过高，否则会造成过拟合和模型训练时长过长。
 
 ### 甜甜圈
 
@@ -660,6 +676,7 @@ $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表
 [^2-7]:Quinlan, J. R. (1993). C4.5: Programs for machine learning. San Francisco,CA: Morgan Kaufman.
 [^2-8]:Loh, W. Y., & Shih, Y. S. (1997). Split selection methods for classification trees. Statistica sinica, 815-840.
 [^2-9]:Freund, Y., & Mason, L. (1999, June). The alternating decision tree learning algorithm. In icml (Vol. 99, pp. 124-133).
+
 [^2-10]:[Mos Zhang, Yuanyuan Li (2022). Decision tree learning](https://www.jiqizhixin.com/graph/technologies/80fbc146-bc42-4585-93e3-21c2dd5ca63f).
 [^2-11]:Tin Kam Ho. [Random decision forests](https://web.archive.org/web/20210303185509/https://ieeexplore.ieee.org/document/598994/). Proceedings of 3rd International Conference on Document Analysis and Recognition (Montreal, Que., Canada: IEEE Comput. Soc. Press). 1995, **1**: 278–282 [2020-03-04]. [ISBN 978-0-8186-7128-9](https://zh.m.wikipedia.org/wiki/Special:网络书源/978-0-8186-7128-9). [doi:10.1109/ICDAR.1995.598994](https://dx.doi.org/10.1109%2FICDAR.1995.598994).
 [^2-12]:Leo Breiman (2001).  Random forests.
@@ -667,7 +684,7 @@ $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表
 [^2-14]:Vapnik, V.N. and Lerner, A.Y., 1963. Recognition of patterns with help of generalized portraits. Avtomat. i Telemekh, 24(6), pp.774-780.
 [^2-15]:Vapnik, V. and Chervonenkis, A., 1964. A note on class of perceptron. Automation and Remote Control, 24.
 [^2-16]:Cover, T.M., 1965. Geometrical and statistical properties of systems of linear inequalities with applications in pattern recognition. IEEE transactions on electronic computers, (3), pp.326-334.
-[^2-17]:Cover, T.M., 1965. Geometrical and statistical properties of systems of linear inequalities with applications in pattern recognition. IEEE transactions on electronic computers, (3), pp.326-334.
+[^2-17]: Smith, F.W., 1968. Pattern classifier design by linear programming. IEEE Transactions on Computers, 100(4), pp.367-372.
 [^2-18]:Vapnik, V.N. and Chervonenkis, A.Y., 2015. On the uniform convergence of relative frequencies of events to their probabilities. In Measures of complexity (pp. 11-30). Springer, Cham.
 [^2-19]:Boser, B.E., Guyon, I.M. and Vapnik, V.N., 1992, July. A training algorithm for optimal margin classifiers. In Proceedings of the fifth annual workshop on Computational learning theory (pp. 144-152). ACM.
 [^2-20]:Cortes, C. and Vapnik, V., 1995. Support-vector networks. Machine learning, 20(3), pp.273-297.
