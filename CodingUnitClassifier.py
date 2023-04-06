@@ -47,7 +47,6 @@ class CodingUnitClassifier(object):
         self.D_train = None  # 训练集的维度数量: int
         self.X_TRAIN = None  # 不会做任何改变的特征值（训练集）
         self.Y_TRAIN = None  # 不会做任何改变的目标值（训练集）
-        self.arr_abnormal = None  # 异常值列表
 
         self.X_train = None  # 特征值（训练集）
         self.y_train = None  # 目标值（训练集）
@@ -323,6 +322,9 @@ class CodingUnitClassifier(object):
         :param num:细化分割的次数
         :return: None
         """
+        if 0 == self.num_refinement_splits:
+            return
+
         self.arr_checker()  # 执行数组长度一致性检查
 
         for run_time in range(num):
@@ -374,7 +376,12 @@ class CodingUnitClassifier(object):
             self.arrCU_is_been_I[index_I] = True
             target_I = self.arrCU_final_target[index_I]
             start_point_I = self.arrCU_start_points[index_I]
-            end_point_I = np.array(start_point_I + self.arrCU_dL[index_I])
+            dL = self.arrCU_dL[index_I]
+            # if 3 == len(start_point_I.shape):  # 不知道为什么有时候会出现 3 维数组，所以暂时采用这个方法消除 Bug。注释掉这个 if 语句也不影响执行
+            #     start_point_I = start_point_I[0]
+            #     dL = dL[0, :, np.newaxis]
+            end_point_I = np.array(start_point_I + dL)
+
 
             # 遍历所有 CU，当前感染者I 要去感染CU（被感染者 S）的 index
             arr_index_S = np.array(index_I)
