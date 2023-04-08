@@ -517,7 +517,7 @@ FOR CU_i 所有 CU 中:
 
 ## 实验条件
 
-为了评估所提出的算法的有效性和超参数对编码单元分类器性能的影响，我们在不同的数据规模和数据分布的数据集上进行了测试。这些数据集包括来自fourclass数据集[^fourclass]以及四组具有不同分布的二维数据集，分别为对角正态分布、Checkerboard、甜甜圈、DoubleHelix 和锯齿。我们的衡量标准包括训练模型的时间以及对测试集的预测结果的准确度（Accuracy）。
+为了评估所提出的算法的有效性和超参数对编码单元分类器性能的影响，我们在不同的数据规模和数据分布的数据集上进行了测试。这些数据集包括来自fourclass数据集[^fourclass]以及四组具有不同分布的二维数据集，分别为对角正态分布、Checkerboard、DoubleHelix 和锯齿(Sawtooth)。我们的衡量标准包括训练模型的时间以及对测试集的预测结果的准确度（Accuracy）。
 
 为了保证结果的公平性，在对测试阶段使用的数据集进行特征工程时，均采用以下参数：
 
@@ -625,6 +625,22 @@ fourclass 数据集拥有862个样本点，其中包括两种特征值和两种�
 | 0.99 | 0.44562 | 0.83152 | 6.35383 | 94.38570 |
 | 1.00 | 0.43736 | 0.82263 | 6.35337 | 95.04048 |
 
+### NormalDiagonal
+
+对角线正态分布是一个简单的数据集，其中两类目标值的粒子群呈现正态分布的形态。使用的数据集样本分布如下图所示。
+
+![dataset-NormalDiagonal](doc/pic/dataset-NormalDiagonal.png)
+
+$C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表-1 和图-1中所示；训练模型所用的时间，其结果在表-2和图-2 中所示。
+
+![res-time-NormalDiagonal](doc/pic/res-time-NormalDiagonal.png)
+
+图 24 中展示了$C_{re}$ 和 $t$ 在取不同值时CUC 估计器的形态。
+
+![cuc-NormalDiagonal](doc/pic/cuc-NormalDiagonal.png)
+
+根据结果显示，针对简单结构的数据集，CUC 能够实现高精准度分类。此外，通过调整超参数可以得到不同结构的分类器。
+
 ### Checkerboard
 
 Checkerboard 是一种二维 4×4 数据集，常用于大规模评估。在本工作中，所使用的棋盘数据集包含 3600 个样本点，其中 400 个样本点为噪音（异常值）。样本的分布如图-3所示。训练和测试数据集是随机选择的。
@@ -643,13 +659,45 @@ $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表
 
 通过所得到的结果我们可以看到，对于样本点不具有复杂嵌套结构的数据集，CUC 分类器能够识别且过滤噪声，并进行非常高效的分类。但由于数据集中噪声的存在，预分割阈值 $t$ 和细化分割 $C_{re}$ 的次数不应过高，否则会造成过拟合和模型训练时长过长。
 
-### 甜甜圈
+### DoubleHelix
 
-甜甜圈数据集是一种具有 O 型嵌套的数据集。在本工作中，所使用的棋盘数据集包含随机生成的 3600 个样本点。样本的分布如图-3所示。
+在本实验中，所使用的DoubleHelix数据集包含随机生成[^t-dh]的 800 个样本点，并且 DoubleHelix 数据集中的样本点具有双螺旋嵌套结构。样本的分布如图-3所示。
 
+<img src="doc/pic/dataset-DoubleHelix.png" alt="dataset-DoubleHelix" style="zoom: 50%;" />
 
+$C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表-1 和图-1中所示；训练模型所用的时间，其结果在表-2和图-2 中所示。
 
-### 对角正态分布
+![res-score-DoubleHelix](doc/pic/res-score-DoubleHelix.png)
+
+![res-time-DoubleHelix](doc/pic/res-time-DoubleHelix.png)
+
+在下图中展示了当 $C_{re}=1$， $t = 0.70, 0.85, 1.00$ 时，CUC 估计器的构造。
+
+![CUC-doublehelix](doc/pic/CUC-doublehelix.png)
+
+根据结果显示，CUC 可对具有双螺旋嵌套结构的数据集进行高效分类，且在不考虑耗时的情况下，分类准确率可达 1.0；同时，在保证训练时长不超过 10 秒的情况下，准确率也能达到 0.99。图-N和表-N表明，在数据样本分布较为弯曲的情况下，提升 $C_{re}$ 和 $t$ 可显著提升准确率，有效避免欠拟合 (underfitting)。
+
+### Sawtooth
+
+Sawtooth 数据集包含两种目标值和两种特征值，共有 400 个样本点。值得注意的是，Sawtooth 数据集中两种样本之间的交接处较为模糊，样本分布如图-N 所示。
+
+<img src="doc/pic/dataset-Sawtooth.png" alt="dataset-Sawtooth" style="zoom: 67%;" />
+
+$C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表-1 和图-1中所示；训练模型所用的时间，其结果在表-2和图-2 中所示。
+
+![res-score-Sawtooth](doc/pic/res-score-Sawtooth.png)
+
+![res-time-Sawtooth](doc/pic/res-time-Sawtooth.png)
+
+在下图中展示了当 $C_{re}=1$， $t = 0.80, 0.85, 0.90$ 时，CUC 估计器的构造。
+
+![CUC-Sawtooth-1](doc/pic/CUC-Sawtooth-1.png)
+
+在下图中展示了当 $C_{re}=0, 1, 2, 3$， $t =0.90$ 时，CUC 估计器的构造。
+
+![CUC-Sawtooth-2](doc/pic/CUC-Sawtooth-2.png)
+
+由得到的结果和 CUC 估计器的构造我们可以分析得到，在较小的数据集中，由于边界数据点的密度较低，一个点或几个点可能不足以提供该数据集分区的足够信息，这会导致结果中的准确率略有下降。
 
 
 
@@ -698,6 +746,7 @@ $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表
 [^fourclass]: Tin Kam Ho and Eugene M. Kleinberg, 1996. Building projectable classifiers of arbitrary complexity. In Proceedings of the 13th International Conference on Pattern Recognition, pages 880-885, Vienna, Austria.
 [^t-1]:Omid Naghash Almasi, Modjtaba Rouhani, 2021. A geometric-based data reduction approach for large low dimensional datasets: Delaunay triangulation in SVM algorithms, Machine Learning with Applications, Volume 4, 100025
 [^t-2]:TaiYu Cheng, Yukata Masuda, Jun Chen, Jaehoon Yu, Masanori Hashimoto, 2020. Logarithm-approximate floating-point multiplier is applicable to power-efficient neural network training, Integration, Volume 74, Pages 19-31
+[^t-dh]: Generating Spiral Dataset for Classifying in Python, GitHub Gist [Электронный ресурс]. URL: https://gist.github.com/45deg/e731d9e7f478de134def5668324c44c5
 
 
 
