@@ -359,7 +359,10 @@ class CodingUnitClassifier(object):
             # I - 感染者，他去感染其他单元
             # S - 被感染者，他被 I 所感染
             pd_beenI_and_fi = pd.DataFrame(data=[self.arrCU_is_been_I, self.arrCU_force_infection]).T
-            index_I = pd_beenI_and_fi[pd_beenI_and_fi.iloc[:, 0] == False].iloc[:, 1].astype('float64').idxmax() # 当前的感染力度最大的，且以前没做过 I 的下标
+            sr_fi = pd_beenI_and_fi[pd_beenI_and_fi.iloc[:, 0] == False].iloc[:, 1]
+            if sr_fi.shape[0] == 0:  # 都被感染了
+                break
+            index_I = sr_fi.astype('float64').idxmax() # 当前的感染力度最大的，且以前没做过 I 的下标
 
             self.arrCU_is_been_I[index_I] = True
             target_I = self.arrCU_final_target[index_I]
