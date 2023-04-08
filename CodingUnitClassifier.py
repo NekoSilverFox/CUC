@@ -61,7 +61,6 @@ class CodingUnitClassifier(object):
         self.arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
         self.arrCU_num_point = None  # arrCU_start_points 对应位置的编码单元中粒子数量
         self.arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
-        self.arrCU_is_been_I = None  # 当前单元是否成为过感染者（I）
 
     def arr_checker(self):
         """
@@ -342,10 +341,10 @@ class CodingUnitClassifier(object):
         """
         self.arr_checker()
 
-        self.arrCU_is_been_I = np.full(shape=self.arrCU_is_enable.shape, fill_value=False)  # False 代表从来没感染过他人
+        arrCU_is_been_I = np.full(shape=self.arrCU_force_infection.shape, fill_value=False)  # False 代表从来没感染过他人
         run_time = 0
         # 如果还有空白的编码单元就一直循环
-        while np.any(self.arrCU_final_target == self.CUType.EMPTY_CU.value):
+        while True:
             run_time += 1
 
             # tmp_fi_max = -1.0
@@ -358,24 +357,22 @@ class CodingUnitClassifier(object):
             # 感染力度最大的单元去感染其他粒子
             # I - 感染者，他去感染其他单元
             # S - 被感染者，他被 I 所感染
-            pd_beenI_and_fi = pd.DataFrame(data=[self.arrCU_is_been_I, self.arrCU_force_infection]).T
+            pd_beenI_and_fi = pd.DataFrame(data=[arrCU_is_been_I, self.arrCU_force_infection]).T
             sr_fi = pd_beenI_and_fi[pd_beenI_and_fi.iloc[:, 0] == False].iloc[:, 1]
-            if sr_fi.shape[0] == 0:  # 都被感染了
+            if sr_fi.shape[0] == 0:  # 都当过一次感染者
+                if np.any(self.arrCU_final_target == self.CUType.EMPTY_CU.value):
+                    print('[WARRING] 有的点没被感染！！！！！')
                 break
-            index_I = sr_fi.astype('float64').idxmax() # 当前的感染力度最大的，且以前没做过 I 的下标
+            index_I = sr_fi.astype('float64').idxmax()  # 当前的感染力度最大的，且以前没做过 I 的下标
 
-            self.arrCU_is_been_I[index_I] = True
+            arrCU_is_been_I[index_I] = True
             target_I = self.arrCU_final_target[index_I]
             start_point_I = self.arrCU_start_points[index_I]
             dL = self.arrCU_dL[index_I]
-            # if 3 == len(start_point_I.shape):  # 不知道为什么有时候会出现 3 维数组，所以暂时采用这个方法消除 Bug。注释掉这个 if 语句也不影响执行
-            #     start_point_I = start_point_I[0]
-            #     dL = dL[0, :, np.newaxis]
             end_point_I = np.array(start_point_I + dL)
 
-
             # 遍历所有 CU，当前感染者I 要去感染CU（被感染者 S）的 index
-            arr_index_S = np.array(index_I)
+            arr_index_S = [index_I]  # 被感染者下标
             sum_point = self.arrCU_num_point[index_I]  # 所有被感染者CU中的粒子数量
             sum_V = (self.arrCU_dL[index_I] ** self.D_train)  # 所有被感染者CU中的体积
             for i in range(self.arrCU_start_points.shape[0]):
@@ -403,13 +400,13 @@ class CodingUnitClassifier(object):
                     continue
 
                 # 记录被感染者 S 的下标
-                arr_index_S = np.append(arr_index_S, i)
+                arr_index_S.append(i)
                 sum_point += self.arrCU_num_point[i]
                 sum_V += (self.arrCU_dL[i] ** self.D_train)
 
             # 【感染】如果相邻，则进行感染，并且重置他们的感染力度和单元类别 >>>>>>>>>>>>>>>>>
-            print(f'[INFO] CU_{index_I} 将感染 {arr_index_S}, {arr_index_S.shape}')
-            if arr_index_S.shape == ():  # 可能出现空的情况
+            print(f'[INFO] CU_{index_I} 将感染 {arr_index_S}, {len(arr_index_S)}')
+            if len(arr_index_S) == 0:  # 可能出现空的情况
                 continue
 
             new_fi = sum_point / sum_V  # 新感染力度
@@ -417,6 +414,7 @@ class CodingUnitClassifier(object):
                 self.arrCU_force_infection[i] = new_fi
                 self.arrCU_final_target[i] = target_I
             # <<<<<<<<<<<<<<<<<< 感染结束
+
             if self.is_draw_2D and (2 == self.D_train):
                 self.draw_2d(color_map=self.color_map, pic_save_path=self.pic_save_path)
 
