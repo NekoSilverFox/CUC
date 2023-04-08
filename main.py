@@ -279,9 +279,9 @@ if __name__ == '__main__':
     # cre = 0
     # t = 0.90
 
-    for cre in range(3, 4):
+    for cre in range(0, 4):
         print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-        for t in np.arange(start=0.81, stop=1.0, step=0.01):
+        for t in np.arange(start=0.70, stop=1.0, step=0.01):
             print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre},  t: {t}     开始 fit')
             blockPrint()  # 禁用 print 输出
             start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
