@@ -21,12 +21,12 @@ class CodingUnitClassifier(object):
         NOT_FINAL_CU = -1
         EMPTY_CU = -2
 
-    def __init__(self, num_refinement_splits=0, threshold_value=1.0, is_draw_2D=False, color_map=[], pic_save_path=None, **kw) -> None:
+    def __init__(self, Cre=0, threshold=1.0, is_draw_2D=False, color_map=[], pic_save_path=None, **kw) -> None:
         """初始化
 
         Args:
-            num_refinement_splits (int, optional): 细化分割次数. Defaults to 0.
-            threshold_value (int, optional): 临界值. Defaults to  1.0.
+            Cre (int, optional): 细化分割次数. Defaults to 0.
+            threshold (int, optional): 临界值. Defaults to  1.0.
             is_draw_2D (bool, optional): 当绘制 2D 数据集，是否绘制中途图像. Defaults to False.
         """
         self.is_draw_2D = is_draw_2D
@@ -35,12 +35,12 @@ class CodingUnitClassifier(object):
         self.draw_count = 0  # 绘制次数记录（还用于拓展保存时的文件名）
 
         self.split_count = 0  # 分割次数计数器
-        self.num_refinement_splits = num_refinement_splits
+        self.num_refinement_splits = Cre
 
-        if threshold_value > 1.0:
+        if threshold > 1.0:
             self.threshold_value = 1.0  # 临界值：当某个 CU 中某种粒子占比超过这个阈值，则暂停分割
         else:
-            self.threshold_value = threshold_value
+            self.threshold_value = threshold
 
         self.transfer_LabelEncoder = None  # 目标值的转换器（转为数字）
 
@@ -59,7 +59,7 @@ class CodingUnitClassifier(object):
         self.arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
         self.arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
         self.arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
-        self.arrCU_num_point = None # arrCU_start_points 对应位置的编码单元中粒子数量
+        self.arrCU_num_point = None  # arrCU_start_points 对应位置的编码单元中粒子数量
         self.arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
         self.arrCU_is_been_I = None  # 当前单元是否成为过感染者（I）
 
@@ -174,14 +174,12 @@ class CodingUnitClassifier(object):
             raise ValueError(f'[CUC-ERROR] CU on index {index_start_points} already disable, can not continue split')
 
         self.arrCU_is_enable[index_start_points] = False  # 既然对这个单元分割就说明这个单元不再使用了，因为它被差分成了许多新的小单元
-        # if self.arrCU_is_enable[index_start_points]:
-        #     print('>>>>>>>>>>>>>>>>>>> ERROR >>>>>>>>>>>>>>>>>>>')
 
         start_points = self.arrCU_start_points[index_start_points]
         new_dL = self.arrCU_dL[index_start_points] / 2
         end_points = np.array(start_points + new_dL)
 
-        # 生成包含所有可能性组合的列表
+        # 生成包含所有可能性组合的列表（二进制位表）
         combinations = []
         for i in range(2 ** self.D_train):
             new_combination = []
@@ -192,12 +190,9 @@ class CodingUnitClassifier(object):
                     new_combination.append(start_points[j])
             combinations.append(new_combination)
 
-        # print(f'\n\n[INFO] -------------split-------------\n'
-        #       f'new_dL: {new_dL}\n'
-        #       f'new_combination:\n{combinations}')
-
         # 分割后的 CU 添加至缓冲区
         self.arrCU_start_points = np.vstack([self.arrCU_start_points, np.array(combinations)])
+        # self.arrCU_start_points = np.array(self.arrCU_start_points.tolist() + combinations)
         self.arrCU_dL = np.hstack([self.arrCU_dL, np.full(shape=(2 ** self.D_train,), fill_value=new_dL)])
         self.arrCU_is_enable = np.hstack([self.arrCU_is_enable, np.full(shape=(2 ** self.D_train,), fill_value=True)])
         self.arrCU_final_target = np.hstack(
@@ -251,6 +246,7 @@ class CodingUnitClassifier(object):
             new_arrCU_num_point.append(num_point_in_CU)
             new_arrCU_force_infection.append(density)
 
+        # 释放内存
         del self.arrCU_start_points
         del self.arrCU_dL
         del self.arrCU_is_enable
@@ -258,6 +254,7 @@ class CodingUnitClassifier(object):
         del self.arrCU_num_point
         del self.arrCU_force_infection
 
+        # 整理好的数组替换原本的
         self.arrCU_start_points = np.array(new_arrCU_start_points)
         self.arrCU_dL = np.array(new_arrCU_dL)
         self.arrCU_is_enable = np.array(new_arrCU_is_enable)
@@ -350,19 +347,20 @@ class CodingUnitClassifier(object):
         # 如果还有空白的编码单元就一直循环
         while np.any(self.arrCU_final_target == self.CUType.EMPTY_CU.value):
             run_time += 1
-            # 获取没有使用过的感染者
-            index_I = None  # 当前的感染者是感染力度最大的，这里获取他的下标
-            tmp_fi_max = -1.0
-            for i in range(self.arrCU_is_enable.shape[0]):
-                if self.arrCU_is_been_I[i] or self.arrCU_force_infection[i] <= tmp_fi_max:
-                    continue
-                index_I = i
-                tmp_fi_max = self.arrCU_force_infection[i]
+
+            # tmp_fi_max = -1.0
+            # for i in range(self.arrCU_is_enable.shape[0]):
+            #     if self.arrCU_is_been_I[i] or self.arrCU_force_infection[i] < tmp_fi_max:
+            #         continue
+            #     index_I = i
+            #     tmp_fi_max = self.arrCU_force_infection[i]
 
             # 感染力度最大的单元去感染其他粒子
             # I - 感染者，他去感染其他单元
             # S - 被感染者，他被 I 所感染
-            # index_I = self.arrCU_force_infection.argmax()  #
+            pd_beenI_and_fi = pd.DataFrame(data=[self.arrCU_is_been_I, self.arrCU_force_infection]).T
+            index_I = pd_beenI_and_fi[pd_beenI_and_fi.iloc[:, 0] == False].iloc[:, 1].astype('float64').idxmax() # 当前的感染力度最大的，且以前没做过 I 的下标
+
             self.arrCU_is_been_I[index_I] = True
             target_I = self.arrCU_final_target[index_I]
             start_point_I = self.arrCU_start_points[index_I]

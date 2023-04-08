@@ -276,8 +276,8 @@ if __name__ == '__main__':
     arr_score = []
     arr_time = []
 
-    # cre = 0
-    # t = 0.90
+    # cre = 3
+    # t = 0.84
 
     for cre in range(0, 4):
         print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
@@ -285,7 +285,7 @@ if __name__ == '__main__':
             print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre},  t: {t}     开始 fit')
             blockPrint()  # 禁用 print 输出
             start_time = time.time()  # 开始时间 >>>>>>>>>>>>>>>>>
-            estimator = CodingUnitClassifier(num_refinement_splits=cre, threshold_value=t,
+            estimator = CodingUnitClassifier(Cre=cre, threshold=t,
                                              is_draw_2D=False, color_map=('blue', 'red'), pic_save_path='./output/CUC')
             estimator.fit(X=x_train, y=y_train)
             end_time = time.time()   # <<<<<<<<<<<<<<<<< 结束时间
