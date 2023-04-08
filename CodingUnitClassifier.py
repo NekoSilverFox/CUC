@@ -216,12 +216,12 @@ class CodingUnitClassifier(object):
         # 同时计算 CU 的密度
         df_X_target = pd.DataFrame(self.X_train)
 
-        new_arrCU_start_points = None  # 编码单元起始点列表
-        new_arrCU_dL = None  # arrCU_start_points 对应位置的编码单元的边长 `dL`
-        new_arrCU_is_enable = None  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
-        new_arrCU_final_target = None  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
-        new_arrCU_num_point = None  # arrCU_start_points 对应位置的编码单元中粒子数量
-        new_arrCU_force_infection = None  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
+        new_arrCU_start_points = []  # 编码单元起始点列表
+        new_arrCU_dL = []  # arrCU_start_points 对应位置的编码单元的边长 `dL`
+        new_arrCU_is_enable = []  # arrCU_start_points 对应位置的编码单元是否启用，True 代表启用，False 代表不启用
+        new_arrCU_final_target = []  # arrCU_start_points 对应位置的编码单元的最终预测类别（-1 代表无类别）
+        new_arrCU_num_point = []  # arrCU_start_points 对应位置的编码单元中粒子数量
+        new_arrCU_force_infection = []  # arrCU_start_points 对应位置的编码单元的感染力度 (force of infection)
 
         for i in range(self.arrCU_start_points.shape[0]):
             if not self.arrCU_is_enable[i]:
@@ -244,22 +244,12 @@ class CodingUnitClassifier(object):
                 density = num_point_in_CU / (dL ** self.D_train)
                 target_CU = self.arrCU_final_target[i]
 
-            # 第一个 enable 的 CU（也就是初始化 new_arr）
-            if new_arrCU_is_enable is None:
-                new_arrCU_start_points = np.array([self.arrCU_start_points[i]])
-                new_arrCU_dL = np.array(self.arrCU_dL[i])
-                new_arrCU_is_enable = np.array(self.arrCU_is_enable[i])
-                new_arrCU_final_target = np.array(target_CU)
-                new_arrCU_num_point = np.array(num_point_in_CU)
-                new_arrCU_force_infection = np.array(density)
-                continue
-
-            new_arrCU_start_points = np.vstack([new_arrCU_start_points, np.array(self.arrCU_start_points[i])])
-            new_arrCU_dL = np.append(new_arrCU_dL, self.arrCU_dL[i])
-            new_arrCU_is_enable = np.append(new_arrCU_is_enable, self.arrCU_is_enable[i])
-            new_arrCU_final_target = np.append(new_arrCU_final_target, target_CU)
-            new_arrCU_num_point = np.append(new_arrCU_num_point, num_point_in_CU)
-            new_arrCU_force_infection = np.append(new_arrCU_force_infection, density)
+            new_arrCU_start_points.append(self.arrCU_start_points[i])
+            new_arrCU_dL.append(self.arrCU_dL[i])
+            new_arrCU_is_enable.append(self.arrCU_is_enable[i])
+            new_arrCU_final_target.append(target_CU)
+            new_arrCU_num_point.append(num_point_in_CU)
+            new_arrCU_force_infection.append(density)
 
         del self.arrCU_start_points
         del self.arrCU_dL
@@ -268,12 +258,12 @@ class CodingUnitClassifier(object):
         del self.arrCU_num_point
         del self.arrCU_force_infection
 
-        self.arrCU_start_points = new_arrCU_start_points
-        self.arrCU_dL = new_arrCU_dL
-        self.arrCU_is_enable = new_arrCU_is_enable
-        self.arrCU_final_target = new_arrCU_final_target
-        self.arrCU_num_point = new_arrCU_num_point
-        self.arrCU_force_infection = new_arrCU_force_infection
+        self.arrCU_start_points = np.array(new_arrCU_start_points)
+        self.arrCU_dL = np.array(new_arrCU_dL)
+        self.arrCU_is_enable = np.array(new_arrCU_is_enable)
+        self.arrCU_final_target = np.array(new_arrCU_final_target)
+        self.arrCU_num_point = np.array(new_arrCU_num_point)
+        self.arrCU_force_infection = np.array(new_arrCU_force_infection)
 
     def pre_split(self):
         """
