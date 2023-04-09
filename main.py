@@ -55,6 +55,12 @@ def test_data_1():
     data = pd.concat([tmp_data_1, tmp_data_2], axis=0)
     # data = shuffle(data).reset_index(drop=True)  # 打乱样本顺序
 
+    plt.figure(figsize=(5, 5))
+    plt.scatter(x=data[data['Color'] == 'red'].iloc[:, 0], y=data[data['Color'] == 'red'].iloc[:, 1], s=5, c='red')
+    plt.scatter(x=data[data['Color'] == 'green'].iloc[:, 0], y=data[data['Color'] == 'green'].iloc[:, 1], s=5,
+                c='blue')
+    plt.show()
+
     # 划分数据集
     return train_test_split(data.iloc[:, :-1], data.iloc[:, -1])
 
@@ -70,6 +76,7 @@ def test_data_a():
     plt.scatter(x=data[data['Color'] == 'red'].iloc[:, 0], y=data[data['Color'] == 'red'].iloc[:, 1], s=5, c='red')
     plt.scatter(x=data[data['Color'] == 'green'].iloc[:, 0], y=data[data['Color'] == 'green'].iloc[:, 1], s=5,
                 c='blue')
+    plt.savefig('./output/dataset-NormalDiagonal.png')
     plt.show()
 
     return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
@@ -87,12 +94,14 @@ def test_data_d():
     data_train = pd.read_csv(filepath_or_buffer='./test_data/svmdata_d.txt', sep='\t')
     data_test = pd.read_csv(filepath_or_buffer='./test_data/svmdata_d_test.txt', sep='\t')
     data = pd.concat([data_train, data_test], axis=0)
+    print(data.shape)
     # data = shuffle(data).reset_index(drop=True)
 
     plt.figure(figsize=(5, 5))
     plt.scatter(x=data[data['Colors'] == 'red'].iloc[:, 0], y=data[data['Colors'] == 'red'].iloc[:, 1], s=5, c='red')
     plt.scatter(x=data[data['Colors'] == 'green'].iloc[:, 0], y=data[data['Colors'] == 'green'].iloc[:, 1], s=5,
                 c='blue')
+    plt.savefig('./output/dataset-Sawtooth.png')
     plt.show()
 
     # return train_test_split(data.iloc[:, :-1], data.iloc[:, -1], random_state=RANDOM_STATE)
@@ -253,18 +262,21 @@ def dataset_helix():
     res_b = np.append(x_b, np.ones((N, 1)), axis=1)
 
     data = np.append(res_a, res_b, axis=0)
+    print(data.shape)
 
     plt.figure(figsize=(5, 5))
-    plt.scatter(x_a[:, 0], x_a[:, 1])
-    plt.scatter(x_b[:, 0], x_b[:, 1])
+    plt.scatter(x_a[:, 0], x_a[:, 1], s=5, c='red')
+    plt.scatter(x_b[:, 0], x_b[:, 1], s=5, c='blue')
+    plt.savefig('./output/dataset-DoubleHelix.png')
     plt.show()
-
     return train_test_split(data[:, :-1], data[:, -1], random_state=RANDOM_STATE)
 
 if __name__ == '__main__':
     # 划分数据集
-    x_train, x_test, y_train, y_test = dataset_helix()  # 小规模对角正态分布
+    # x_train, x_test, y_train, y_test = dataset_helix()  # 小规模对角正态分布
     # x_train, x_test, y_train, y_test = test_data_a()  # 小规模对角正态分布
+    x_train, x_test, y_train, y_test = test_data_d()  # 锯齿
+
     # x_train, x_test, y_train, y_test = dataset_fourclass()  # 蛇形
     # x_train, x_test, y_train, y_test = dataset_nesting()  # 甜甜圈
 
@@ -276,8 +288,8 @@ if __name__ == '__main__':
     arr_score = []
     arr_time = []
 
-    # cre = 3
-    # t = 0.84
+    cre = 3
+    t = 0.85
 
     for cre in range(0, 4):
         print(f'\n>>>>>>>>>>>>>>>>>>>>>>>>>>> Cre: {cre} <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
