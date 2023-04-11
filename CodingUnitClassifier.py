@@ -428,6 +428,9 @@ class CodingUnitClassifier(object):
         # self.draw_count += 1
         # if self.draw_count > 70 and self.draw_count % 10 != 0:
         #     return
+        self.draw_count += 1
+        if not (self.draw_count < 80 or self.draw_count % 10 == 0):
+            return
 
         color_map = np.array(color_map)
         if color_map.shape[0] != self.D_train:
@@ -466,7 +469,6 @@ class CodingUnitClassifier(object):
             plt.xlabel('x')
             plt.axis('equal')  # x、y 单位长度等长
 
-        self.draw_count += 1
         if pic_save_path is not None:
             plt.savefig(f'{pic_save_path}-{self.draw_count}.png')
         plt.show()

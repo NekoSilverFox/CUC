@@ -1,5 +1,7 @@
 # Created by .ignore support plugin (hsz.mobi)
 .DS_Store
+ClassifierTest.ipynb
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
