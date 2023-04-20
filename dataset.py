@@ -81,9 +81,8 @@ def sawtooth():
     # data = shuffle(data).reset_index(drop=True)
 
     plt.figure(figsize=(5, 5))
-    plt.scatter(x=data[data['Colors'] == 'red'].iloc[:, 0], y=data[data['Colors'] == 'red'].iloc[:, 1], s=5, c='red')
-    plt.scatter(x=data[data['Colors'] == 'green'].iloc[:, 0], y=data[data['Colors'] == 'green'].iloc[:, 1], s=5,
-                c='blue')
+    plt.scatter(x=data[data['Colors'] == 'red'].iloc[:, 0], y=data[data['Colors'] == 'red'].iloc[:, 1], s=18, c='red')
+    plt.scatter(x=data[data['Colors'] == 'green'].iloc[:, 0], y=data[data['Colors'] == 'green'].iloc[:, 1], s=18, c='blue')
     plt.savefig('./output/dataset-Sawtooth.png')
     plt.show()
 

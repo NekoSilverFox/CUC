@@ -727,6 +727,22 @@ $C_{re}$ 和 $t$ 在取不同值时对预测准确率的影响，其结果如表
 
 
 
+---
+
+# Q&A
+
+Q: 与 SVM 相比有何优势
+
+A: 算法简单，没有复杂的矩阵运算，速度快
+
+
+
+Q:
+
+A:
+
+
+
 # 引用来源
 
 [^1]:[Gary J. Sullivan, Woo-Jin Han, Thomas Wiegand, 2012. Overview of the High Efficiency Video Coding (HEVC) Standard , IEEE Transactions on circuits and systems for video technology, VOL.22, NO.12](https://iphome.hhi.de/wiegand/assets/pdfs/2012_12_IEEE-HEVC-Overview.pdf)
