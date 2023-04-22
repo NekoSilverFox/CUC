@@ -73,6 +73,14 @@
 
 
 
+> 在数据集上的动态演示：
+>
+> ![DoubleHelix](doc/pic/DoubleHelix.gif)
+>
+> ![fourclass](doc/pic/fourclass.gif)
+
+
+
 # 文献回顾
 
 ## 机器学习的发展
