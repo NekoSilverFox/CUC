@@ -47,7 +47,7 @@
 
 > 关键词：机器学习，分类算法，分类器，分类预测，监督学习，算法，编码单元
 
-本文提出了一种新的算法——编码单元分类算法 (CUCL - Coding unit classification algorithm), 用于解决机器学习中的分类预测问题。该算法的灵感来自于**高效率视讯编码[^1]**（High Efficiency Video Coding，简称 HEVC，又称为H.265）中的[编码树单元](https://zh.wikipedia.org/wiki/編碼樹單元)(Coding Tree Unit, CTU)。
+本文提出了一种新的算法——编码单元分类算法 (CUCL - Coding unit classification algorithm)，用于解决机器学习中的分类预测问题。该算法的灵感来自于**高效率视讯编码[^1]**（High Efficiency Video Coding，简称 HEVC，又称为H.265）中的[编码树单元](https://zh.wikipedia.org/wiki/編碼樹單元)(Coding Tree Unit, CTU)。
 
 编码树单元是HEVC的基本编码单元，它取代了过往中使用的 16×16 像素[宏区块](https://zh.wikipedia.org/wiki/宏區塊)。编码树单元通过使用可变大小的区块结构，将图片细分为可变大小的像素块，提升通常会提高时编码的效率。
 
@@ -56,6 +56,16 @@
 在最终的测试中，CUC 分类器对于不同的样本点数量和样本点分布的数据集都能够十分迅速的构建预估器并且对测试集达到 >0.95 的准确率。
 
 在本项工作中，使用了以下库和工具 drawio, git, numpy、pandas、Matplotlib 和 scikit-learn，开发语言为Python 3.9，并使用PyCharm作为开发和测试环境。
+
+
+
+---
+
+**评语：**
+
+这篇论文提出了一种新的算法——编码单元分类算法，旨在解决机器学习中的分类预测问题。论文详细描述了编码单元分类器的构建方法和实现过程，并最终对其在多个数据集上进行了测试，并与其他分类算法进行了比较。
+
+---
 
 
 

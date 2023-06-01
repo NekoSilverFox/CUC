@@ -2,6 +2,10 @@
 .DS_Store
 ClassifierTest.ipynb
 
+# 自定义文件 等
+*.drawio.bkp
+output/
+
 ### Python template
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -12,7 +16,6 @@ __pycache__/
 *.so
 
 # Distribution / packaging
-output/
 .Python
 env/
 build/
