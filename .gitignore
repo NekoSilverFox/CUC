@@ -1,8 +1,9 @@
 # Created by .ignore support plugin (hsz.mobi)
-.DS_Store
-ClassifierTest.ipynb
+
 
 # 自定义文件 等
+.DS_Store
+ClassifierTest.ipynb
 *.drawio.bkp
 output/
 
