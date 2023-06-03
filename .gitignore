@@ -1,6 +1,11 @@
 # Created by .ignore support plugin (hsz.mobi)
+
+
+# 自定义文件 等
 .DS_Store
 ClassifierTest.ipynb
+*.drawio.bkp
+output/
 
 ### Python template
 # Byte-compiled / optimized / DLL files
@@ -12,7 +17,6 @@ __pycache__/
 *.so
 
 # Distribution / packaging
-output/
 .Python
 env/
 build/
